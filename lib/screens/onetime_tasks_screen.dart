@@ -5,7 +5,7 @@ import '../models/onetime_task.dart';
 import '../services/hive_service.dart';
 import '../widgets/onetime_task_item.dart';
 
-/// Tab 2: Einmalige Aufgaben
+/// Bildschirm für einmalige Aufgaben (Tab 2)
 class OneTimeTasksScreen extends StatefulWidget {
   const OneTimeTasksScreen({super.key});
 
@@ -14,31 +14,32 @@ class OneTimeTasksScreen extends StatefulWidget {
 }
 
 class _OneTimeTasksScreenState extends State<OneTimeTasksScreen> {
+  late Box<OneTimeTask> _box;
+
+  @override
+  void initState() {
+    super.initState();
+    _box = Hive.box<OneTimeTask>(HiveService.onetimeBoxName);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
-      valueListenable:
-          Hive.box<OneTimeTask>(HiveService.onetimeBoxName).listenable(),
+      valueListenable: _box.listenable(),
       builder: (context, Box<OneTimeTask> box, _) {
         final tasks = box.values.toList();
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Einmalige Aufgaben')),
+          appBar: AppBar(title: const Text('Einmalige To-Dos')),
           body: ReorderableListView.builder(
             itemCount: tasks.length,
-            onReorder: (oldIndex, newIndex) {
-              setState(() {
-                if (newIndex > oldIndex) newIndex--;
-                final item = tasks.removeAt(oldIndex);
-                tasks.insert(newIndex, item);
-                box.clear();
-                box.addAll(tasks);
-              });
-            },
+            onReorder: _onReorder,
+            buildDefaultDragHandles: true,
             itemBuilder: (context, index) {
-              return OneTimeTaskItem(
-                key: ValueKey(tasks[index]),
+              return OnetimeTaskItem(
+                key: ValueKey(tasks[index].key),
                 task: tasks[index],
+                onDelete: () => _deleteTask(index),
               );
             },
           ),
@@ -51,34 +52,54 @@ class _OneTimeTasksScreenState extends State<OneTimeTasksScreen> {
     );
   }
 
+  /// Neue Position speichern nach Drag-and-Drop
+  void _onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex--;
+      final task = _box.getAt(oldIndex)!;
+      _box.deleteAt(oldIndex);
+      _box.putAt(newIndex, task);
+    });
+  }
+
+  /// Aufgabe löschen beim Abhaken
+  void _deleteTask(int index) {
+    _box.deleteAt(index);
+  }
+
+  /// Dialog zum Hinzufügen einer neuen einmaligen Aufgabe
   void _showAddDialog(BuildContext context) {
     final titleController = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Neue Aufgabe'),
-        content: TextField(
-          controller: titleController,
-          decoration: const InputDecoration(labelText: 'Titel'),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Abbrechen')),
-          ElevatedButton(
-            onPressed: () {
-              if (titleController.text.isNotEmpty) {
-                Hive.box<OneTimeTask>(HiveService.onetimeBoxName).add(
-                  OneTimeTask(title: titleController.text),
-                );
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Hinzufügen'),
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Neue einmalige Aufgabe'),
+          content: TextField(
+            controller: titleController,
+            decoration: const InputDecoration(labelText: 'Aufgabenname'),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Abbrechen'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final title = titleController.text.trim();
+                if (title.isNotEmpty) {
+                  _box.add(OneTimeTask(title: title));
+                  Navigator.of(context).pop();
+                }
+              },
+              child: const Text('Hinzufügen'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -13,11 +13,10 @@ void main() async {
   await HiveService.registerAdapters();
   await HiveService.openBoxes();
 
-  // App starten
   runApp(const MyApp());
 }
 
-/// Haupt-App
+/// Haupt-App Widget mit zwei Tabs
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -35,7 +34,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// Hauptseite mit TabBar
+/// Hauptseite mit BottomNavigationBar (2 Tabs)
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
@@ -46,7 +45,6 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
 
-  // Liste der Tabs
   static final List<Widget> _tabs = <Widget>[
     const RecurringTasksScreen(),
     const OneTimeTasksScreen(),

@@ -1,30 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 
 import '../models/onetime_task.dart';
-import '../services/hive_service.dart';
 
-/// UI-Element für einmalige Aufgaben
-class OneTimeTaskItem extends StatelessWidget {
+/// Einzelne Listeneinträge für einmalige Aufgaben
+class OnetimeTaskItem extends StatelessWidget {
   final OneTimeTask task;
+  final VoidCallback onDelete;
 
-  const OneTimeTaskItem({super.key, required this.task});
+  const OnetimeTaskItem({
+    super.key,
+    required this.task,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return ListTile(
       key: key,
-      child: ListTile(
-        title: Text(task.title),
-        trailing: IconButton(
-          icon: const Icon(Icons.check, color: Colors.green),
-          onPressed: () {
-            Hive.box<OneTimeTask>(HiveService.onetimeBoxName).delete(task.key);
-          },
-        ),
-        onLongPress: () {
-          Hive.box<OneTimeTask>(HiveService.onetimeBoxName).delete(task.key);
-        },
+      title: Text(task.title),
+      trailing: IconButton(
+        icon: const Icon(Icons.check_box),
+        onPressed: onDelete,
+        tooltip: 'Aufgabe abhaken und löschen',
       ),
     );
   }

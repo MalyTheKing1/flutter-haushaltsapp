@@ -5,7 +5,7 @@ import '../models/recurring_task.dart';
 import '../services/hive_service.dart';
 import '../widgets/recurring_task_item.dart';
 
-/// Tab 1: Wiederkehrende Aufgaben
+/// Bildschirm für wiederkehrende Aufgaben (Tab 1)
 class RecurringTasksScreen extends StatelessWidget {
   const RecurringTasksScreen({super.key});
 
@@ -43,50 +43,55 @@ class RecurringTasksScreen extends StatelessWidget {
     );
   }
 
+  /// Dialog zum Hinzufügen einer neuen Aufgabe
   void _showAddDialog(BuildContext context) {
     final titleController = TextEditingController();
     final intervalController = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Neue Aufgabe'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Titel'),
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Neue wiederkehrende Aufgabe'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration:
+                    const InputDecoration(labelText: 'Aufgabenname'),
+              ),
+              TextField(
+                controller: intervalController,
+                decoration:
+                    const InputDecoration(labelText: 'Intervall (Tage)'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Abbrechen'),
             ),
-            TextField(
-              controller: intervalController,
-              keyboardType: TextInputType.number,
-              decoration:
-                  const InputDecoration(labelText: 'Intervall (Tage)'),
+            ElevatedButton(
+              onPressed: () {
+                final title = titleController.text.trim();
+                final interval = int.tryParse(intervalController.text.trim());
+                if (title.isNotEmpty && interval != null && interval > 0) {
+                  final box = Hive.box<RecurringTask>(
+                      HiveService.recurringBoxName);
+                  box.add(RecurringTask(title: title, intervalDays: interval));
+                  Navigator.of(context).pop();
+                }
+              },
+              child: const Text('Hinzufügen'),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Abbrechen')),
-          ElevatedButton(
-            onPressed: () {
-              if (titleController.text.isNotEmpty &&
-                  int.tryParse(intervalController.text) != null) {
-                Hive.box<RecurringTask>(HiveService.recurringBoxName).add(
-                  RecurringTask(
-                    title: titleController.text,
-                    intervalDays: int.parse(intervalController.text),
-                  ),
-                );
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Hinzufügen'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

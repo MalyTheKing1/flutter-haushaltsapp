@@ -24,7 +24,7 @@ class RecurringTask extends HiveObject {
     DateTime? lastDoneDate,
   }) : lastDoneDate = lastDoneDate ?? DateTime.now();
 
-  /// Prüfen, ob Aufgabe fällig ist
+  /// Prüft, ob die Aufgabe aktuell fällig ist
   bool get isDue {
     final nextDueDate = lastDoneDate.add(Duration(days: intervalDays));
     return DateTime.now().isAfter(nextDueDate);
