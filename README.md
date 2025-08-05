@@ -1,16 +1,16 @@
-# flutter_application_chores
+# Haushaltsplaner App (Flutter)
 
-A new Flutter project.
+Minimalistische Flutter-App zur Verwaltung von wiederkehrenden und einmaligen Aufgaben – komplett offline.
 
-## Getting Started
+## Funktionen
+- **Tab 1:** Wiederkehrende Aufgaben mit automatischer Fälligkeit
+- **Tab 2:** Einmalige To-Dos mit Drag-and-Drop-Sortierung
+- Lokale Speicherung mit Hive
+- Minimalistisches Design, sanfte Animationen
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Installation
+1. Flutter installieren: [Flutter Download](https://flutter.dev/docs/get-started/install)
+2. Repository/Dateien in ein neues Projektverzeichnis kopieren
+3. Abhängigkeiten installieren:
+   ```bash
+   flutter pub get
