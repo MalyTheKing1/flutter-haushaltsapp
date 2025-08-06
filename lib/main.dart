@@ -16,7 +16,7 @@ void main() async {
   runApp(const MyApp());
 }
 
-/// Haupt-App Widget mit zwei Tabs
+/// Haupt-App Widget
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// Hauptseite mit BottomNavigationBar (2 Tabs)
+/// Hauptseite mit BottomNavigationBar + Swipe-Funktion
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
@@ -42,24 +42,44 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => _MainPageState();
 }
 
-class _MainPageState extends State<MainPage> {
-  int _selectedIndex = 0;
+class _MainPageState extends State<MainPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
 
-  static final List<Widget> _tabs = <Widget>[
-    const RecurringTasksScreen(),
-    const OneTimeTasksScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
+    // Wenn per Swipe gewechselt wird → BottomNavigationBar aktualisieren
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging == false) {
+        setState(() {}); // rebuild für neuen Index
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  /// Wechsel durch Tippen auf BottomNavigationBar
+  void _onItemTapped(int index) {
+    _tabController.animateTo(index);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _tabs[_selectedIndex],
+      body: TabBarView(
+        controller: _tabController,
+        children: const [
+          RecurringTasksScreen(),
+          OneTimeTasksScreen(),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         items: const [
           BottomNavigationBarItem(
@@ -71,7 +91,7 @@ class _MainPageState extends State<MainPage> {
             label: 'Einmalig',
           ),
         ],
-        currentIndex: _selectedIndex,
+        currentIndex: _tabController.index,
         selectedItemColor: Colors.teal,
         onTap: _onItemTapped,
       ),
