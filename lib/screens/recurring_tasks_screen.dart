@@ -17,29 +17,37 @@ class RecurringTasksScreen extends StatelessWidget {
       builder: (context, Box<RecurringTask> box, _) {
         final tasks = box.values.toList();
 
-        // Sortieren: Fällige oben, erledigte unten
-        tasks.sort((a, b) {
-          if (a.isDue && !b.isDue) return -1;
-          if (!a.isDue && b.isDue) return 1;
-          if (a.isDone && !b.isDone) return 1;
-          if (!a.isDone && b.isDone) return -1;
-          return 0;
-        });
-
-        //  Automatisch erledigte Aufgaben zurücksetzen, wenn wieder fällig
+        // Erledigte Tasks automatisch zurücksetzen, wenn wieder fällig
         for (var task in tasks) {
           if (task.isDone && task.isDue) {
             task.isDone = false;
             task.save(); // Speichert die Änderung in Hive
           }
         }
-      
+
+        // Aufteilen in offene und erledigte Tasks
+        final openTasks = tasks.where((t) => !t.isDone).toList();
+        final doneTasks = tasks.where((t) => t.isDone).toList();
+
+        // Offene Tasks nach Intervall (kleinster zuerst) sortieren
+        openTasks.sort((a, b) => a.intervalDays.compareTo(b.intervalDays));
+
+        // Erledigte Tasks nach nächster Fälligkeit sortieren (früheste zuerst)
+        doneTasks.sort((a, b) {
+          final aDueDate = a.lastDoneDate.add(Duration(days: a.intervalDays));
+          final bDueDate = b.lastDoneDate.add(Duration(days: b.intervalDays));
+          return aDueDate.compareTo(bDueDate);
+        });
+
+        // Kombinierte Liste (offen oben, erledigt unten)
+        final sortedTasks = [...openTasks, ...doneTasks];
+
         return Scaffold(
           appBar: AppBar(title: const Text('Wiederkehrende Aufgaben')),
           body: ListView.builder(
-            itemCount: tasks.length,
+            itemCount: sortedTasks.length,
             itemBuilder: (context, index) {
-              return RecurringTaskItem(task: tasks[index]);
+              return RecurringTaskItem(task: sortedTasks[index]);
             },
           ),
           floatingActionButton: FloatingActionButton(
@@ -51,7 +59,7 @@ class RecurringTasksScreen extends StatelessWidget {
     );
   }
 
-  /// Dialog zum Hinzufügen einer neuen Aufgabe
+  /// Dialog zum Hinzufügen einer neuen Aufgabe (bleibt unverändert)
   void _showAddDialog(BuildContext context) {
     final titleController = TextEditingController();
     final intervalController = TextEditingController();

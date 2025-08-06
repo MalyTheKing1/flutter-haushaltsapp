@@ -11,39 +11,130 @@ class RecurringTaskItem extends StatefulWidget {
   State<RecurringTaskItem> createState() => _RecurringTaskItemState();
 }
 
-class _RecurringTaskItemState extends State<RecurringTaskItem> {
+class _RecurringTaskItemState extends State<RecurringTaskItem>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
   @override
   void initState() {
     super.initState();
-    // Beim Start prüfen, ob Haken entfernt werden muss
+
+    // Beim Start prüfen, ob Haken entfernt werden muss (wie bisher)
     if (widget.task.isDone) {
-      final dueDate = widget.task.lastDoneDate
-          .add(Duration(days: widget.task.intervalDays));
+      final dueDate =
+          widget.task.lastDoneDate.add(Duration(days: widget.task.intervalDays));
       if (DateTime.now().isAfter(dueDate)) {
         widget.task.isDone = false;
         widget.task.save();
       }
     }
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+
+    // Tween für Skalierung von 1.0 bis 1.2 mit easeOut Kurve
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.2)
+        .chain(CurveTween(curve: Curves.easeOut))
+        .animate(_controller);
+
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _controller.reverse();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// Berechnet die volle Anzahl Tage bis zur nächsten Fälligkeit
+  int getDaysUntilDue() {
+    final nextDueDate =
+        widget.task.lastDoneDate.add(Duration(days: widget.task.intervalDays));
+
+    // Wir vergleichen nur volle Tage (Datum ohne Zeit)
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dueDate = DateTime(nextDueDate.year, nextDueDate.month, nextDueDate.day);
+
+    return dueDate.difference(today).inDays;
+  }
+
+  void _onCheckboxChanged(bool? value) {
+    if (value == true) {
+      _controller.forward();
+    }
+    setState(() {
+      widget.task.isDone = value ?? false;
+      if (widget.task.isDone) {
+        widget.task.lastDoneDate = DateTime.now();
+      }
+      widget.task.save();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
 
+    String subtitleText = '';
+    Widget? extraSubtitle;
+
+    if (!task.isDone) {
+      subtitleText = 'Intervall: ${task.intervalDays} Tage';
+    } else {
+      final daysUntilDue = getDaysUntilDue();
+
+      if (daysUntilDue == 1) {
+        subtitleText = '';
+        extraSubtitle = Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text(
+            'Morgen fällig',
+            style: TextStyle(
+              color: Theme.of(context).textTheme.bodySmall?.color,
+              fontWeight: FontWeight.w400,
+              fontSize: 12,
+            ),
+          ),
+        );
+      } else {
+        subtitleText = 'Fällig in $daysUntilDue Tagen';
+      }
+    }
+
     return ListTile(
       title: Text(task.title),
-      subtitle: Text('Intervall: ${task.intervalDays} Tage'),
-      trailing: Checkbox(
-        value: task.isDone,
-        onChanged: (value) {
-          setState(() {
-            task.isDone = value ?? false;
-            if (task.isDone) {
-              task.lastDoneDate = DateTime.now();
-            }
-            task.save();
-          });
-        },
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (subtitleText.isNotEmpty)
+            Text(
+              subtitleText,
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodySmall?.color,
+                fontWeight: FontWeight.w400,
+                fontSize: 12,
+              ),
+            ),
+          if (extraSubtitle != null) extraSubtitle,
+        ],
+      ),
+      trailing: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Transform.scale(
+          scale: 1.4, // Checkbox größer machen (ohne Animation)
+          child: Checkbox(
+            value: task.isDone,
+            onChanged: _onCheckboxChanged,
+          ),
+        ),
       ),
       onLongPress: () => _showEditDialog(context, task),
     );
@@ -69,7 +160,8 @@ class _RecurringTaskItemState extends State<RecurringTaskItem> {
               ),
               TextField(
                 controller: intervalController,
-                decoration: const InputDecoration(labelText: 'Intervall (Tage)'),
+                decoration:
+                    const InputDecoration(labelText: 'Intervall (Tage)'),
                 keyboardType: TextInputType.number,
               ),
             ],
