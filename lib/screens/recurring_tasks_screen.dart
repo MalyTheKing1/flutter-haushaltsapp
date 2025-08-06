@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -6,8 +7,70 @@ import '../services/hive_service.dart';
 import '../widgets/recurring_task_item.dart';
 
 /// Bildschirm für wiederkehrende Aufgaben (Tab 1)
-class RecurringTasksScreen extends StatelessWidget {
+class RecurringTasksScreen extends StatefulWidget {
   const RecurringTasksScreen({super.key});
+
+  @override
+  State<RecurringTasksScreen> createState() => _RecurringTasksScreenState();
+}
+
+class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
+  // Timer für verzögerte Sortierung nach Checkbox-Änderung
+  Timer? _sortDelayTimer;
+  // Key für die abgehakte Task, um Animation zu steuern
+  String? _recentlyCheckedTaskKey;
+  
+  @override
+  void dispose() {
+    _sortDelayTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Sortiert Tasks 
+  List<RecurringTask> _getSortedTasks(List<RecurringTask> tasks) {
+    // Erledigte Tasks automatisch zurücksetzen, wenn wieder fällig
+    for (var task in tasks) {
+      if (task.isDone && task.isDue) {
+        task.isDone = false;
+        task.save();
+      }
+    }
+
+    // Aufteilen in offene und erledigte Tasks
+    final openTasks = tasks.where((t) => !t.isDone).toList();
+    final doneTasks = tasks.where((t) => t.isDone).toList();
+
+    // Offene Tasks nach Intervall (kleinster zuerst) sortieren
+    openTasks.sort((a, b) => a.intervalDays.compareTo(b.intervalDays));
+
+    // Erledigte Tasks nach nächster Fälligkeit sortieren (früheste zuerst)
+    doneTasks.sort((a, b) {
+      final aDueDate = a.lastDoneDate.add(Duration(days: a.intervalDays));
+      final bDueDate = b.lastDoneDate.add(Duration(days: b.intervalDays));
+      return aDueDate.compareTo(bDueDate);
+    });
+
+    // Kombinierte Liste (offen oben, erledigt unten)
+    return [...openTasks, ...doneTasks];
+  }
+
+  /// Callback für RecurringTaskItem wenn Checkbox geändert wird
+  void _onTaskCheckChanged(RecurringTask task) {
+    // Merke dir welche Task gerade geändert wurde
+    setState(() {
+      _recentlyCheckedTaskKey = task.key.toString();
+    });
+    
+    // Nach kurzer Zeit die Sortierung wieder normal laufen lassen
+    _sortDelayTimer?.cancel();
+    _sortDelayTimer = Timer(const Duration(milliseconds: 700), () {
+      if (mounted) {
+        setState(() {
+          _recentlyCheckedTaskKey = null;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,38 +79,32 @@ class RecurringTasksScreen extends StatelessWidget {
           Hive.box<RecurringTask>(HiveService.recurringBoxName).listenable(),
       builder: (context, Box<RecurringTask> box, _) {
         final tasks = box.values.toList();
-
-        // Erledigte Tasks automatisch zurücksetzen, wenn wieder fällig
-        for (var task in tasks) {
-          if (task.isDone && task.isDue) {
-            task.isDone = false;
-            task.save(); // Speichert die Änderung in Hive
-          }
-        }
-
-        // Aufteilen in offene und erledigte Tasks
-        final openTasks = tasks.where((t) => !t.isDone).toList();
-        final doneTasks = tasks.where((t) => t.isDone).toList();
-
-        // Offene Tasks nach Intervall (kleinster zuerst) sortieren
-        openTasks.sort((a, b) => a.intervalDays.compareTo(b.intervalDays));
-
-        // Erledigte Tasks nach nächster Fälligkeit sortieren (früheste zuerst)
-        doneTasks.sort((a, b) {
-          final aDueDate = a.lastDoneDate.add(Duration(days: a.intervalDays));
-          final bDueDate = b.lastDoneDate.add(Duration(days: b.intervalDays));
-          return aDueDate.compareTo(bDueDate);
-        });
-
-        // Kombinierte Liste (offen oben, erledigt unten)
-        final sortedTasks = [...openTasks, ...doneTasks];
+        final sortedTasks = _getSortedTasks(tasks);
 
         return Scaffold(
           appBar: AppBar(title: const Text('Wiederkehrende Aufgaben')),
           body: ListView.builder(
             itemCount: sortedTasks.length,
             itemBuilder: (context, index) {
-              return RecurringTaskItem(task: sortedTasks[index]);
+              final task = sortedTasks[index];
+              final isRecentlyChanged = _recentlyCheckedTaskKey == task.key.toString();
+              
+              return AnimatedContainer(
+                duration: Duration(milliseconds: isRecentlyChanged ? 600 : 300),
+                curve: Curves.easeInOut,
+                // Sanfte Transformation für die kürzlich geänderte Task
+                transform: isRecentlyChanged 
+                  ? (Matrix4.identity()..scale(0.98)..translate(8.0, 0.0))
+                  : Matrix4.identity(),
+                child: AnimatedOpacity(
+                  duration: Duration(milliseconds: isRecentlyChanged ? 400 : 200),
+                  opacity: isRecentlyChanged ? 0.7 : 1.0,
+                  child: RecurringTaskItem(
+                    task: task,
+                    onCheckChanged: () => _onTaskCheckChanged(task),
+                  ),
+                ),
+              );
             },
           ),
           floatingActionButton: FloatingActionButton(

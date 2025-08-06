@@ -4,8 +4,13 @@ import '../models/recurring_task.dart';
 /// Einzelne Listeneinträge für wiederkehrende Aufgaben
 class RecurringTaskItem extends StatefulWidget {
   final RecurringTask task;
+  final VoidCallback? onCheckChanged; // Callback für Parent Screen
 
-  const RecurringTaskItem({super.key, required this.task});
+  const RecurringTaskItem({
+    super.key, 
+    required this.task,
+    this.onCheckChanged,
+  });
 
   @override
   State<RecurringTaskItem> createState() => _RecurringTaskItemState();
@@ -70,6 +75,8 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
     if (value == true) {
       _controller.forward();
     }
+    
+    // Task State sofort ändern für responsive UI
     setState(() {
       widget.task.isDone = value ?? false;
       if (widget.task.isDone) {
@@ -77,6 +84,9 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
       }
       widget.task.save();
     });
+
+    // Parent Screen über Änderung informieren (für verzögerte Sortierung)
+    widget.onCheckChanged?.call();
   }
 
   @override
