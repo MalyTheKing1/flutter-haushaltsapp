@@ -54,12 +54,19 @@ class _OneTimeTasksScreenState extends State<OneTimeTasksScreen> {
 
   /// Neue Position speichern nach Drag-and-Drop
   void _onReorder(int oldIndex, int newIndex) {
-    setState(() {
-      if (newIndex > oldIndex) newIndex--;
-      final task = _box.getAt(oldIndex)!;
-      _box.deleteAt(oldIndex);
-      _box.putAt(newIndex, task);
-    });
+    if (newIndex > oldIndex) newIndex--;
+
+    // Lokale Kopie erstellen
+    final tasks = _box.values.toList();
+
+    // Element verschieben
+    final movedTask = tasks.removeAt(oldIndex);
+    tasks.insert(newIndex, movedTask);
+
+    // Schrittweise aktualisieren, ohne alles zu löschen
+    for (int i = 0; i < tasks.length; i++) {
+      _box.putAt(i, OneTimeTask(title: tasks[i].title));
+    }
   }
 
   /// Aufgabe löschen beim Abhaken
