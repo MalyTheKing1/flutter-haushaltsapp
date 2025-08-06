@@ -26,6 +26,14 @@ class RecurringTasksScreen extends StatelessWidget {
           return 0;
         });
 
+        //  Automatisch erledigte Aufgaben zurücksetzen, wenn wieder fällig
+        for (var task in tasks) {
+          if (task.isDone && task.isDue) {
+            task.isDone = false;
+            task.save(); // Speichert die Änderung in Hive
+          }
+        }
+      
         return Scaffold(
           appBar: AppBar(title: const Text('Wiederkehrende Aufgaben')),
           body: ListView.builder(
