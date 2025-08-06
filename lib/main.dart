@@ -84,7 +84,7 @@ class _MainPageState extends State<MainPage>
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.repeat),
-            label: 'Wiederkehrend',
+            label: 'Haushalt',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.check_box),
