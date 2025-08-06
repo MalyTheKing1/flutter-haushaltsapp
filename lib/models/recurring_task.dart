@@ -27,6 +27,12 @@ class RecurringTask extends HiveObject {
   /// Prüft, ob die Aufgabe aktuell fällig ist
   bool get isDue {
     final nextDueDate = lastDoneDate.add(Duration(days: intervalDays));
-    return DateTime.now().isAfter(nextDueDate);
+
+    // Vergleiche nur das Datum (Jahr, Monat, Tag), ohne Zeit
+    final today = DateTime.now();
+    final todayDateOnly = DateTime(today.year, today.month, today.day);
+    final nextDueDateOnly = DateTime(nextDueDate.year, nextDueDate.month, nextDueDate.day);
+
+    return !todayDateOnly.isBefore(nextDueDateOnly);
   }
 }
