@@ -63,7 +63,7 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
     
     // Nach kurzer Zeit die Sortierung wieder normal laufen lassen
     _sortDelayTimer?.cancel();
-    _sortDelayTimer = Timer(const Duration(milliseconds: 700), () {
+    _sortDelayTimer = Timer(const Duration(milliseconds: 1000), () {
       if (mounted) {
         setState(() {
           _recentlyCheckedTaskKey = null;
@@ -84,6 +84,7 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
         return Scaffold(
           appBar: AppBar(title: const Text('Wiederkehrende Aufgaben')),
           body: ListView.builder(
+            padding: const EdgeInsets.only(bottom: 80), // Platz für FAB
             itemCount: sortedTasks.length,
             itemBuilder: (context, index) {
               final task = sortedTasks[index];
@@ -98,7 +99,9 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
                   : Matrix4.identity(),
                 child: AnimatedOpacity(
                   duration: Duration(milliseconds: isRecentlyChanged ? 400 : 200),
-                  opacity: isRecentlyChanged ? 0.7 : 1.0,
+                  opacity: isRecentlyChanged
+                      ? 0.7 // kurz nach Änderung etwas blasser
+                      : (task.isDone ? 0.3 : 1.0), // erledigte Aufgaben dauerhaft blasser
                   child: RecurringTaskItem(
                     task: task,
                     onCheckChanged: () => _onTaskCheckChanged(task),

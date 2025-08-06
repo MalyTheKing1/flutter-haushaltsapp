@@ -30,7 +30,7 @@ class _OneTimeTasksScreenState extends State<OneTimeTasksScreen> {
         final tasks = box.values.toList();
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Einmalige To-Dos')),
+          appBar: AppBar(title: const Text('To-Do Liste')),
           body: ReorderableListView.builder(
             itemCount: tasks.length,
             onReorder: _onReorder,

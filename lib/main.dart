@@ -88,7 +88,7 @@ class _MainPageState extends State<MainPage>
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.check_box),
-            label: 'Einmalig',
+            label: 'To-Do',
           ),
         ],
         currentIndex: _tabController.index,
