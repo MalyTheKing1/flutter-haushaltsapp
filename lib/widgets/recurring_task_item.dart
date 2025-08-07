@@ -168,6 +168,10 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
       'window.png',
       'tools.png',
       'car.png',
+      'dog.png',
+      'bag.png',
+      'heart.png',
+      'paper.png',
     ];
 
     String selectedIcon = task.iconName;
