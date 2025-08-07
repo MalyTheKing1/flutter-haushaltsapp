@@ -35,7 +35,6 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
     final doneTasks = tasks.where((t) => t.isDone).toList();
 
     openTasks.sort((a, b) => a.intervalDays.compareTo(b.intervalDays));
-
     doneTasks.sort((a, b) {
       final aDueDate = a.lastDoneDate.add(Duration(days: a.intervalDays));
       final bDueDate = b.lastDoneDate.add(Duration(days: b.intervalDays));
@@ -85,9 +84,7 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
                     : Matrix4.identity(),
                 child: AnimatedOpacity(
                   duration: Duration(milliseconds: isRecentlyChanged ? 400 : 200),
-                  opacity: isRecentlyChanged
-                      ? 0.7
-                      : (task.isDone ? 0.3 : 1.0),
+                  opacity: isRecentlyChanged ? 0.7 : (task.isDone ? 0.3 : 1.0),
                   child: RecurringTaskItem(
                     task: task,
                     onCheckChanged: () => _onTaskCheckChanged(task),
@@ -109,83 +106,104 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
     final titleController = TextEditingController();
     final intervalController = TextEditingController();
     final iconOptions = [
-      'broom.png',
       'house.png',
+      'broom.png',
       'oven.png',
       'plant.png',
       'toilet.png',
       'trash.png',
       'vacuum.png',
+      'bottle.png',
+      'pill.png',
+      'shower.png',
+      'shirt.png',
+      'fridge.png',
+      'bed.png',
+      'window.png',
+      'tools.png',
+      'car.png',
     ];
     String selectedIcon = 'house.png';
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Neue wiederkehrende Aufgabe'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: 'Aufgabenname'),
-              ),
-              TextField(
-                controller: intervalController,
-                decoration: const InputDecoration(labelText: 'Intervall (Tage)'),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: selectedIcon,
-                items: iconOptions.map((icon) {
-                  return DropdownMenuItem(
-                    value: icon,
-                    child: Row(
-                      children: [
-                        Image.asset('assets/icons/$icon', width: 24, height: 24),
-                        const SizedBox(width: 8),
-                        Text(icon.replaceAll('.png', '')),
-                      ],
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Neue wiederkehrende Aufgabe'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(labelText: 'Aufgabenname'),
                     ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      selectedIcon = value;
-                    });
-                  }
-                },
-                decoration: const InputDecoration(labelText: 'Icon'),
+                    TextField(
+                      controller: intervalController,
+                      decoration: const InputDecoration(labelText: 'Intervall (Tage)'),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 12),
+                    Text('Icon auswählen:', style: Theme.of(context).textTheme.labelMedium),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: iconOptions.map((icon) {
+                        final isSelected = selectedIcon == icon;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedIcon = icon;
+                            });
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: isSelected
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Colors.grey.shade300,
+                                width: isSelected ? 2 : 1,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.all(8),
+                            child: Image.asset('assets/icons/$icon', width: 40, height: 40),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Abbrechen'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final title = titleController.text.trim();
-                final interval = int.tryParse(intervalController.text.trim());
-                if (title.isNotEmpty && interval != null && interval > 0) {
-                  final box = Hive.box<RecurringTask>(HiveService.recurringBoxName);
-                  box.add(RecurringTask(
-                    title: title,
-                    intervalDays: interval,
-                    iconName: selectedIcon,
-                  ));
-                  Navigator.of(context).pop();
-                }
-              },
-              child: const Text('Hinzufügen'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Abbrechen'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final title = titleController.text.trim();
+                    final interval = int.tryParse(intervalController.text.trim());
+                    if (title.isNotEmpty && interval != null && interval > 0) {
+                      final box = Hive.box<RecurringTask>(HiveService.recurringBoxName);
+                      box.add(RecurringTask(
+                        title: title,
+                        intervalDays: interval,
+                        iconName: selectedIcon,
+                      ));
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('Hinzufügen'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
