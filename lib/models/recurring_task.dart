@@ -17,12 +17,17 @@ class RecurringTask extends HiveObject {
   @HiveField(3)
   DateTime lastDoneDate;
 
+  @HiveField(4)
+  String iconName; // ← NEU
+
   RecurringTask({
     required this.title,
     required this.intervalDays,
     this.isDone = false,
     DateTime? lastDoneDate,
-  }) : lastDoneDate = lastDoneDate ?? DateTime.now();
+    String? iconName, // ← Optional für alte Datensätze
+  })  : lastDoneDate = lastDoneDate ?? DateTime.now(),
+        iconName = iconName ?? 'house.png'; // Fallback
 
   /// Prüft, ob die Aufgabe aktuell fällig ist
   bool get isDue {

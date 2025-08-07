@@ -6,7 +6,6 @@ import '../models/recurring_task.dart';
 import '../services/hive_service.dart';
 import '../widgets/recurring_task_item.dart';
 
-/// Bildschirm für wiederkehrende Aufgaben (Tab 1)
 class RecurringTasksScreen extends StatefulWidget {
   const RecurringTasksScreen({super.key});
 
@@ -15,20 +14,16 @@ class RecurringTasksScreen extends StatefulWidget {
 }
 
 class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
-  // Timer für verzögerte Sortierung nach Checkbox-Änderung
   Timer? _sortDelayTimer;
-  // Key für die abgehakte Task, um Animation zu steuern
   String? _recentlyCheckedTaskKey;
-  
+
   @override
   void dispose() {
     _sortDelayTimer?.cancel();
     super.dispose();
   }
 
-  /// Sortiert Tasks 
   List<RecurringTask> _getSortedTasks(List<RecurringTask> tasks) {
-    // Erledigte Tasks automatisch zurücksetzen, wenn wieder fällig
     for (var task in tasks) {
       if (task.isDone && task.isDue) {
         task.isDone = false;
@@ -36,32 +31,25 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
       }
     }
 
-    // Aufteilen in offene und erledigte Tasks
     final openTasks = tasks.where((t) => !t.isDone).toList();
     final doneTasks = tasks.where((t) => t.isDone).toList();
 
-    // Offene Tasks nach Intervall (kleinster zuerst) sortieren
     openTasks.sort((a, b) => a.intervalDays.compareTo(b.intervalDays));
 
-    // Erledigte Tasks nach nächster Fälligkeit sortieren (früheste zuerst)
     doneTasks.sort((a, b) {
       final aDueDate = a.lastDoneDate.add(Duration(days: a.intervalDays));
       final bDueDate = b.lastDoneDate.add(Duration(days: b.intervalDays));
       return aDueDate.compareTo(bDueDate);
     });
 
-    // Kombinierte Liste (offen oben, erledigt unten)
     return [...openTasks, ...doneTasks];
   }
 
-  /// Callback für RecurringTaskItem wenn Checkbox geändert wird
   void _onTaskCheckChanged(RecurringTask task) {
-    // Merke dir welche Task gerade geändert wurde
     setState(() {
       _recentlyCheckedTaskKey = task.key.toString();
     });
-    
-    // Nach kurzer Zeit die Sortierung wieder normal laufen lassen
+
     _sortDelayTimer?.cancel();
     _sortDelayTimer = Timer(const Duration(milliseconds: 1000), () {
       if (mounted) {
@@ -75,8 +63,7 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
-      valueListenable:
-          Hive.box<RecurringTask>(HiveService.recurringBoxName).listenable(),
+      valueListenable: Hive.box<RecurringTask>(HiveService.recurringBoxName).listenable(),
       builder: (context, Box<RecurringTask> box, _) {
         final tasks = box.values.toList();
         final sortedTasks = _getSortedTasks(tasks);
@@ -84,24 +71,23 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
         return Scaffold(
           appBar: AppBar(title: const Text('Wiederkehrende Aufgaben')),
           body: ListView.builder(
-            padding: const EdgeInsets.only(bottom: 80), // Platz für FAB
+            padding: const EdgeInsets.only(bottom: 80),
             itemCount: sortedTasks.length,
             itemBuilder: (context, index) {
               final task = sortedTasks[index];
               final isRecentlyChanged = _recentlyCheckedTaskKey == task.key.toString();
-              
+
               return AnimatedContainer(
                 duration: Duration(milliseconds: isRecentlyChanged ? 600 : 300),
                 curve: Curves.easeInOut,
-                // Sanfte Transformation für die kürzlich geänderte Task
-                transform: isRecentlyChanged 
-                  ? (Matrix4.identity()..scale(0.98)..translate(8.0, 0.0))
-                  : Matrix4.identity(),
+                transform: isRecentlyChanged
+                    ? (Matrix4.identity()..scale(0.98)..translate(8.0, 0.0))
+                    : Matrix4.identity(),
                 child: AnimatedOpacity(
                   duration: Duration(milliseconds: isRecentlyChanged ? 400 : 200),
                   opacity: isRecentlyChanged
-                      ? 0.7 // kurz nach Änderung etwas blasser
-                      : (task.isDone ? 0.3 : 1.0), // erledigte Aufgaben dauerhaft blasser
+                      ? 0.7
+                      : (task.isDone ? 0.3 : 1.0),
                   child: RecurringTaskItem(
                     task: task,
                     onCheckChanged: () => _onTaskCheckChanged(task),
@@ -119,10 +105,19 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
     );
   }
 
-  /// Dialog zum Hinzufügen einer neuen Aufgabe (bleibt unverändert)
   void _showAddDialog(BuildContext context) {
     final titleController = TextEditingController();
     final intervalController = TextEditingController();
+    final iconOptions = [
+      'broom.png',
+      'house.png',
+      'oven.png',
+      'plant.png',
+      'toilet.png',
+      'trash.png',
+      'vacuum.png',
+    ];
+    String selectedIcon = 'house.png';
 
     showDialog(
       context: context,
@@ -134,14 +129,36 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
             children: [
               TextField(
                 controller: titleController,
-                decoration:
-                    const InputDecoration(labelText: 'Aufgabenname'),
+                decoration: const InputDecoration(labelText: 'Aufgabenname'),
               ),
               TextField(
                 controller: intervalController,
-                decoration:
-                    const InputDecoration(labelText: 'Intervall (Tage)'),
+                decoration: const InputDecoration(labelText: 'Intervall (Tage)'),
                 keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: selectedIcon,
+                items: iconOptions.map((icon) {
+                  return DropdownMenuItem(
+                    value: icon,
+                    child: Row(
+                      children: [
+                        Image.asset('assets/icons/$icon', width: 24, height: 24),
+                        const SizedBox(width: 8),
+                        Text(icon.replaceAll('.png', '')),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      selectedIcon = value;
+                    });
+                  }
+                },
+                decoration: const InputDecoration(labelText: 'Icon'),
               ),
             ],
           ),
@@ -157,9 +174,12 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
                 final title = titleController.text.trim();
                 final interval = int.tryParse(intervalController.text.trim());
                 if (title.isNotEmpty && interval != null && interval > 0) {
-                  final box = Hive.box<RecurringTask>(
-                      HiveService.recurringBoxName);
-                  box.add(RecurringTask(title: title, intervalDays: interval));
+                  final box = Hive.box<RecurringTask>(HiveService.recurringBoxName);
+                  box.add(RecurringTask(
+                    title: title,
+                    intervalDays: interval,
+                    iconName: selectedIcon,
+                  ));
                   Navigator.of(context).pop();
                 }
               },

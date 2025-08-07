@@ -18,8 +18,8 @@ class HiveService {
     final recurringBox = await Hive.openBox<RecurringTask>(recurringBoxName);
     if (recurringBox.isEmpty) {
       recurringBox.addAll([
-        RecurringTask(title: 'Müll rausbringen', intervalDays: 2),
-        RecurringTask(title: 'Staubsaugen', intervalDays: 7),
+        RecurringTask(title: 'Müll rausbringen', intervalDays: 2, iconName: 'trash.png'),
+        RecurringTask(title: 'Staubsaugen', intervalDays: 7, iconName: 'vacuum.png'),
       ]);
     }
 

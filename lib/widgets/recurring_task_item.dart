@@ -25,7 +25,6 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
   void initState() {
     super.initState();
 
-    // Beim Start prüfen, ob Haken entfernt werden muss (wie bisher)
     if (widget.task.isDone) {
       final dueDate =
           widget.task.lastDoneDate.add(Duration(days: widget.task.intervalDays));
@@ -40,7 +39,6 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
       duration: const Duration(milliseconds: 150),
     );
 
-    // Tween für Skalierung von 1.0 bis 1.2 mit easeOut Kurve
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.2)
         .chain(CurveTween(curve: Curves.easeOut))
         .animate(_controller);
@@ -58,16 +56,12 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
     super.dispose();
   }
 
-  /// Berechnet die volle Anzahl Tage bis zur nächsten Fälligkeit
   int getDaysUntilDue() {
     final nextDueDate =
         widget.task.lastDoneDate.add(Duration(days: widget.task.intervalDays));
-
-    // Wir vergleichen nur volle Tage (Datum ohne Zeit)
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final dueDate = DateTime(nextDueDate.year, nextDueDate.month, nextDueDate.day);
-
     return dueDate.difference(today).inDays;
   }
 
@@ -75,8 +69,7 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
     if (value == true) {
       _controller.forward();
     }
-    
-    // Task State sofort ändern für responsive UI
+
     setState(() {
       widget.task.isDone = value ?? false;
       if (widget.task.isDone) {
@@ -85,13 +78,13 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
       widget.task.save();
     });
 
-    // Parent Screen über Änderung informieren (für verzögerte Sortierung)
     widget.onCheckChanged?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
+    final iconPath = 'assets/icons/${task.iconName.isNotEmpty ? task.iconName : 'house.png'}';
 
     String subtitleText = '';
     Widget? extraSubtitle;
@@ -120,6 +113,11 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
     }
 
     return ListTile(
+      leading: Image.asset(
+        iconPath,
+        width: 32,
+        height: 32,
+      ),
       title: Text(task.title),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,7 +137,7 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
       trailing: ScaleTransition(
         scale: _scaleAnimation,
         child: Transform.scale(
-          scale: 1.4, // Checkbox größer machen (ohne Animation)
+          scale: 1.4,
           child: Checkbox(
             value: task.isDone,
             onChanged: _onCheckboxChanged,
@@ -150,11 +148,19 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
     );
   }
 
-  /// Dialog zum Bearbeiten der Aufgabe
   void _showEditDialog(BuildContext context, RecurringTask task) {
     final titleController = TextEditingController(text: task.title);
-    final intervalController =
-        TextEditingController(text: task.intervalDays.toString());
+    final intervalController = TextEditingController(text: task.intervalDays.toString());
+    final iconOptions = [
+      'broom.png',
+      'house.png',
+      'oven.png',
+      'plant.png',
+      'toilet.png',
+      'trash.png',
+      'vacuum.png',
+    ];
+    String selectedIcon = task.iconName;
 
     showDialog(
       context: context,
@@ -170,9 +176,32 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
               ),
               TextField(
                 controller: intervalController,
-                decoration:
-                    const InputDecoration(labelText: 'Intervall (Tage)'),
+                decoration: const InputDecoration(labelText: 'Intervall (Tage)'),
                 keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: selectedIcon,
+                items: iconOptions.map((icon) {
+                  return DropdownMenuItem(
+                    value: icon,
+                    child: Row(
+                      children: [
+                        Image.asset('assets/icons/$icon', width: 24, height: 24),
+                        const SizedBox(width: 8),
+                        Text(icon.replaceAll('.png', '')),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      selectedIcon = value;
+                    });
+                  }
+                },
+                decoration: const InputDecoration(labelText: 'Icon'),
               ),
             ],
           ),
@@ -190,6 +219,7 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
                 if (newTitle.isNotEmpty && newInterval != null && newInterval > 0) {
                   task.title = newTitle;
                   task.intervalDays = newInterval;
+                  task.iconName = selectedIcon;
                   task.save();
                   Navigator.of(context).pop();
                 }
