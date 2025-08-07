@@ -1,14 +1,17 @@
 import 'package:hive/hive.dart';
 
+import '../models/settings.dart';
 import '../models/recurring_task.dart';
 import '../models/onetime_task.dart';
 
 class HiveService {
+  static const String settingsBoxName = 'settings';
   static const String recurringBoxName = 'recurring_tasks';
   static const String onetimeBoxName = 'onetime_tasks';
 
   /// Hive-Adapter registrieren
   static Future<void> registerAdapters() async {
+    Hive.registerAdapter(SettingsAdapter());
     Hive.registerAdapter(RecurringTaskAdapter());
     Hive.registerAdapter(OneTimeTaskAdapter());
   }
@@ -29,6 +32,12 @@ class HiveService {
         OneTimeTask(title: 'Fenster putzen'),
         OneTimeTask(title: 'Garage aufräumen'),
       ]);
+    }
+
+    // 👇 HIER neue Box für Settings öffnen
+    final settingsBox = await Hive.openBox<Settings>(settingsBoxName);
+    if (settingsBox.isEmpty) {
+      settingsBox.add(Settings(isDarkMode: false));
     }
   }
 }
