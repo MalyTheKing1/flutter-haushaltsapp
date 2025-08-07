@@ -71,7 +71,37 @@ class _OneTimeTasksScreenState extends State<OneTimeTasksScreen> {
 
   /// Aufgabe löschen beim Abhaken
   void _deleteTask(int index) {
+    final deletedTask = _box.getAt(index);
+
+    if (deletedTask == null) return;
+
+    // Aufgabe löschen
     _box.deleteAt(index);
+
+    // Snackbar mit Undo
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Aufgabe "${deletedTask.title}" gelöscht'),
+        action: SnackBarAction(
+          label: 'Rückgängig',
+          onPressed: () async {
+            // Neue Aufgabenliste mit Wiederherstellung an alter Position
+            final oldTasks = _box.values.toList();
+            oldTasks.insert(index, deletedTask);
+
+            // Box leeren
+            await _box.clear();
+
+            // Aufgaben wieder einfügen
+            for (final task in oldTasks) {
+              await _box.add(OneTimeTask(title: task.title));
+            }
+            // Kein setState nötig – Hive meldet Änderung jetzt korrekt
+          },
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   /// Dialog zum Hinzufügen einer neuen einmaligen Aufgabe
