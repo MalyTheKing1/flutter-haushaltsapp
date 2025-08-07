@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+
+import '../services/notification_service.dart';
 import '../models/settings.dart';
 import '../services/hive_service.dart';
 
@@ -35,6 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('Einstellungen'),
       ),
       body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
           ListTile(
             title: const Text('Dark Mode'),
@@ -42,6 +45,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: settings.isDarkMode,
               onChanged: _toggleDarkMode,
             ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              NotificationService().showTestNotification();
+            },
+            child: const Text('Test-Benachrichtigung senden'),
           ),
         ],
       ),

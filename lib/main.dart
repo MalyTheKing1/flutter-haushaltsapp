@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'models/settings.dart';
+import 'services/notification_service.dart';
 import 'services/hive_service.dart';
 import 'screens/settings_screen.dart';
 import 'screens/recurring_tasks_screen.dart';
@@ -14,6 +15,8 @@ void main() async {
   await Hive.initFlutter();
   await HiveService.registerAdapters();
   await HiveService.openBoxes();
+  await NotificationService().init();
+  await NotificationService().requestNotificationPermission();
 
   runApp(const MyApp());
 }
