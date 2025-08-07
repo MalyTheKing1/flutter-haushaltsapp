@@ -3,27 +3,47 @@ import 'package:hive/hive.dart';
 import '../models/settings.dart';
 import '../services/hive_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final settingsBox = Hive.box<Settings>(HiveService.settingsBoxName);
-    final settings = settingsBox.values.first;
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
 
+class _SettingsScreenState extends State<SettingsScreen> {
+  late Box<Settings> settingsBox;
+  late Settings settings;
+
+  @override
+  void initState() {
+    super.initState();
+    settingsBox = Hive.box<Settings>(HiveService.settingsBoxName);
+    settings = settingsBox.values.first;
+  }
+
+  void _toggleDarkMode(bool value) {
+    setState(() {
+      settings.isDarkMode = value;
+      settings.save(); // Speichern in Hive
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Einstellungen'),
       ),
-      body: ListTile(
-        title: const Text('Dunkler Modus'),
-        trailing: Switch(
-          value: settings.isDarkMode,
-          onChanged: (value) {
-            settings.isDarkMode = value;
-            settings.save();
-          },
-        ),
+      body: ListView(
+        children: [
+          ListTile(
+            title: const Text('Dunkler Modus'),
+            trailing: Switch(
+              value: settings.isDarkMode,
+              onChanged: _toggleDarkMode,
+            ),
+          ),
+        ],
       ),
     );
   }
