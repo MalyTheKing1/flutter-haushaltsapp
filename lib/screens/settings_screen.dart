@@ -37,7 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         children: [
           ListTile(
-            title: const Text('Dunkler Modus'),
+            title: const Text('Dark Mode'),
             trailing: Switch(
               value: settings.isDarkMode,
               onChanged: _toggleDarkMode,
