@@ -126,6 +126,8 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
       'bag.png',
       'heart.png',
       'paper.png',
+      'cleaning.png',
+      'cuttlery.png',
     ];
     String selectedIcon = 'house.png';
 
