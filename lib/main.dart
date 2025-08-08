@@ -8,12 +8,24 @@ import 'screens/settings_screen.dart';
 import 'screens/recurring_tasks_screen.dart';
 import 'screens/onetime_tasks_screen.dart';
 
+Future<void> deleteAllHiveData() async {
+  print("🧨 Lösche alle Hive-Daten (Settings, Tasks)...");
+  await Hive.deleteBoxFromDisk(HiveService.recurringBoxName);
+  await Hive.deleteBoxFromDisk(HiveService.onetimeBoxName);
+  await Hive.deleteBoxFromDisk(HiveService.settingsBoxName);
+  print("✅ Alle Hive-Daten wurden gelöscht");
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Hive initialisieren
   await Hive.initFlutter();
   await HiveService.registerAdapters();
+
+  // 👉 Nur für Debug/Entwicklung: Lösche ALLE gespeicherten Daten beim Start
+//  await deleteAllHiveData();
+
   await HiveService.openBoxes();
   await NotificationService().init();
   await NotificationService().requestNotificationPermission();
@@ -100,7 +112,7 @@ class _MainPageState extends State<MainPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Haushaltsplaner'),
+        title: const Text('Daily Helper'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),

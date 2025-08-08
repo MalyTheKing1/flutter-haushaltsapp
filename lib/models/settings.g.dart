@@ -18,15 +18,24 @@ class SettingsAdapter extends TypeAdapter<Settings> {
     };
     return Settings(
       isDarkMode: fields[0] as bool,
+      notificationsEnabled: fields[1] as bool?,
+      notificationHour: fields[2] as int?,
+      notificationMinute: fields[3] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Settings obj) {
     writer
-      ..writeByte(1)
+      ..writeByte(4)
       ..writeByte(0)
-      ..write(obj.isDarkMode);
+      ..write(obj.isDarkMode)
+      ..writeByte(1)
+      ..write(obj.notificationsEnabled)
+      ..writeByte(2)
+      ..write(obj.notificationHour)
+      ..writeByte(3)
+      ..write(obj.notificationMinute);
   }
 
   @override

@@ -81,7 +81,7 @@ class _OneTimeTasksScreenState extends State<OneTimeTasksScreen> {
     // Snackbar mit Undo
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Aufgabe "${deletedTask.title}" gelöscht'),
+        content: Text('Aufgabe "${deletedTask.title}" erledigt'),
         action: SnackBarAction(
           label: 'Rückgängig',
           onPressed: () async {
