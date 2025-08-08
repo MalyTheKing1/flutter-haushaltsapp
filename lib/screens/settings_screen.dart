@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:flutter/services.dart'; // <-- für SystemNavigator.pop()
 
 import '../services/notification_service.dart';
 import '../models/settings.dart';
@@ -105,6 +106,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
           );
         }
       }
+    }
+  }
+
+  /// Debug-Button: Löscht alle Hive-Daten und beendet die App nach Bestätigung!
+  Future<void> _deleteAllHiveDataAndRestart() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Alle Daten löschen?'),
+        content: const Text(
+          '⚠️ Das löscht ALLE gespeicherten Aufgaben und Einstellungen unwiderruflich.\n\nDie App wird danach geschlossen.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Ja, löschen!'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    // Die eigene Settings-Box schließen, falls offen
+    if (settingsBox.isOpen) {
+      await settingsBox.close();
+    }
+
+    // Alle Boxen löschen
+    await HiveService.deleteAllData();
+
+    // Notifications stoppen
+    await NotificationService().cancelAllNotifications();
+
+    // App nach kurzem Hinweis schließen
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Alle Daten gelöscht! App wird jetzt geschlossen...')),
+      );
+      await Future.delayed(const Duration(milliseconds: 700));
+      SystemNavigator.pop(); // <-- App schließen (Android/iOS)
     }
   }
 
@@ -295,6 +342,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
+          ),
+          // NEU: Debug-Button zum Löschen ALLER Hive-Daten und Schließen der App
+          const SizedBox(height: 8),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color.fromARGB(255, 255, 132, 123)),
+            onPressed: _deleteAllHiveDataAndRestart,
+            icon: const Icon(Icons.delete_forever),
+            label: const Text('Debug: ALLE Daten löschen'),
           ),
         ],
       ),

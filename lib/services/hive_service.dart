@@ -24,12 +24,7 @@ class HiveService {
   }
 
   /// Hive-Boxen öffnen und Beispiel-Daten hinzufügen, falls leer
-
   static Future<void> openBoxes() async {
-    // Nur einmalig für sauberen Reset (zum Debuggen)
-    // await Hive.deleteBoxFromDisk(recurringBoxName);
-    // await Hive.deleteBoxFromDisk(onetimeBoxName);
-
     final recurringBox = await Hive.openBox<RecurringTask>(recurringBoxName);
     /*
     if (recurringBox.isEmpty) {
@@ -64,7 +59,6 @@ class HiveService {
   }
 
   static Future<void> _openSettingsBoxWithMigration() async {
-    // ⚠️ Keine automatische Löschung mehr
     if (!Hive.isBoxOpen(settingsBoxName)) {
       await Hive.openBox<Settings>(settingsBoxName);
     }
@@ -82,5 +76,24 @@ class HiveService {
       await settingsBox.add(settings);
       print("✅ Neue Settings-Box mit Defaults erstellt");
     }
+  }
+
+  /// Löscht alle Hive-Boxen und deren gespeicherte Daten von der Disk.
+  static Future<void> deleteAllData() async {
+    // Erst alle Boxen sauber schließen!
+    if (Hive.isBoxOpen(recurringBoxName)) {
+      await Hive.box<RecurringTask>(recurringBoxName).close();
+    }
+    if (Hive.isBoxOpen(onetimeBoxName)) {
+      await Hive.box<OneTimeTask>(onetimeBoxName).close();
+    }
+    if (Hive.isBoxOpen(settingsBoxName)) {
+      await Hive.box<Settings>(settingsBoxName).close();
+    }
+
+    // Dann die Dateien löschen
+    await Hive.deleteBoxFromDisk(recurringBoxName);
+    await Hive.deleteBoxFromDisk(onetimeBoxName);
+    await Hive.deleteBoxFromDisk(settingsBoxName);
   }
 }
