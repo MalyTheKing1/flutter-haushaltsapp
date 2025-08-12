@@ -51,7 +51,7 @@ class _OneTimeTasksScreenState extends State<OneTimeTasksScreen> {
                 key: ValueKey(task.key), // stabiler Key für Reorder
                 child: OnetimeTaskItem(
                   // ➕ Kompaktes Drag-Handle: etwas größer, aber schmaler Abstand
-                  leading: ReorderableDelayedDragStartListener(
+                  leading: ReorderableDragStartListener(
                     index: index, // Reorder startet nach ~0,5s Hold auf dem Icon
                     child: const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 2.0), // schmaler

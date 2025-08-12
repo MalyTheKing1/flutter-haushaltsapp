@@ -1,5 +1,4 @@
 // lib/widgets/onetime_task_item.dart
-// ⛳ Timer-Logik entfernt – Edit öffnet jetzt direkt beim Long-Press (wie im Recurring-Tab)
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -105,24 +104,25 @@ class _OnetimeTaskItemState extends State<OnetimeTaskItem>
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           color: _tileColor,
-          // 👉 Kein GestureDetector mehr nötig: Long-Press direkt am ListTile,
-          //    damit der Dialog sofort während des Haltens öffnet (wie im Recurring-Tab).
           child: ListTile(
             key: widget.key,
-            // 👈 Kompaktes Drag-Handle (Reorder via ReorderableDelayedDragStartListener im Screen)
-            minLeadingWidth: 28, // 👈 reduziert den Abstand zwischen Handle und Titel (Default ~40)
+            // 👈 Kompaktes Drag-Handle (Reorder via ReorderableDragStartListener im Screen)
+            minLeadingWidth: 28,        // engerer Abstand zwischen Handle und Text
             leading: widget.leading,
-            title: Text(widget.task.title),
+            // 👉 Long-Press NUR auf dem Text/Body → öffnet Edit sofort beim Halten
+            title: GestureDetector(
+              behavior: HitTestBehavior.opaque, // größerer Trefferbereich um den Text
+              onLongPress: () {
+                HapticFeedback.selectionClick();
+                _editTaskTitle(context); // sofort beim Halten öffnen
+              },
+              child: Text(widget.task.title),
+            ),
             trailing: IconButton(
               icon: const Icon(Icons.check_box),
               onPressed: _handleCheck,
               tooltip: 'Aufgabe abhaken und löschen',
             ),
-            onLongPress: () {
-              // Sofortiges Edit beim Halten – kein Loslassen nötig.
-              HapticFeedback.selectionClick();
-              _editTaskTitle(context);
-            },
           ),
         ),
       ),
