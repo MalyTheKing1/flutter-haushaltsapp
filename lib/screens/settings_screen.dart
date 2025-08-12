@@ -157,201 +157,215 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 👉 Dynamisches Bottom-Padding: SafeArea + etwas extra Luft
+    final bottomSafe = MediaQuery.of(context).padding.bottom;
+    const extraBottom = 24.0; // ein bisschen Luft über der Android-Bar
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Einstellungen'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          ListTile(
-            title: const Text('Dark Mode'),
-            trailing: Switch(
-              value: settings.isDarkMode,
-              onChanged: _toggleDarkMode,
-            ),
+      body: SafeArea(
+        bottom: true, // schützt vor Überdeckung durch System-UI
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            16 + bottomSafe + extraBottom, // 👈 mehr Platz unten
           ),
-          const Divider(),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Text(
-              'Benachrichtigungen',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-          ),
-          ListTile(
-            title: const Text('Tägliche Erinnerung'),
-            subtitle: const Text('Erinnert dich jeden Tag ans Aufräumen'),
-            trailing: Switch(
-              value: settings.notificationsEnabled,
-              onChanged: _toggleNotifications,
-            ),
-          ),
-          AnimatedCrossFade(
-            duration: const Duration(milliseconds: 300),
-            crossFadeState: settings.notificationsEnabled
-                ? CrossFadeState.showFirst
-                : CrossFadeState.showSecond,
-            firstChild: ListTile(
-              title: const Text('Erinnerungszeit'),
-              subtitle: Text(
-                '${settings.notificationHour}:${settings.notificationMinute.toString().padLeft(2, '0')} Uhr',
+          children: [
+            ListTile(
+              title: const Text('Dark Mode'),
+              trailing: Switch(
+                value: settings.isDarkMode,
+                onChanged: _toggleDarkMode,
               ),
-              trailing: const Icon(Icons.access_time),
-              onTap: _selectNotificationTime,
             ),
-            secondChild: const SizedBox.shrink(),
-          ),
-          const Divider(),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () async {
-              await NotificationService().showTestNotification();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Test-Benachrichtigung gesendet'),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-              }
-            },
-            icon: const Icon(Icons.notifications_outlined),
-            label: const Text('Test: Benachrichtigung senden'),
-          ),
-          const SizedBox(height: 8),
-          ElevatedButton.icon(
-            onPressed: () async {
-              await NotificationService().testNotificationIn10SecondsWithCatch();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Benachrichtungstest (10 Sek.) geplant!'),
-                    duration: Duration(seconds: 10),
-                  ),
-                );
-              }
-            },
-            icon: const Icon(Icons.timer_10),
-            label: const Text('Test: Benachrichtigung in 10 Sek.'),
-          ),
-          const SizedBox(height: 8),
-          ElevatedButton.icon(
-            onPressed: () async {
-              final pendingNotifications = await NotificationService().getPendingNotifications();
-              if (mounted) {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Geplante Benachrichtigungen'),
-                    content: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (pendingNotifications.isEmpty)
-                            const Text('Keine Benachrichtigungen geplant')
-                          else
-                            ...pendingNotifications.map((notification) => Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('ID: ${notification.id}',
-                                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      Text('Titel: ${notification.title ?? "Kein Titel"}'),
-                                      Text('Text: ${notification.body ?? "Kein Text"}'),
-                                      Text('Payload: ${notification.payload ?? "Kein Payload"}'),
-                                      const Divider(),
-                                    ],
-                                  ),
-                                )),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Anzahl geplant: ${pendingNotifications.length}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          if (settings.notificationsEnabled)
-                            Text(
-                              'Soll-Zeit: ${settings.notificationHour}:${settings.notificationMinute.toString().padLeft(2, '0')} Uhr',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                        ],
-                      ),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                'Benachrichtigungen',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('OK'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-            },
-            icon: const Icon(Icons.bug_report),
-            label: const Text('Debug: Geplante Benachrichtigungen'),
-          ),
-          const SizedBox(height: 8),
-          ElevatedButton.icon(
-            onPressed: () async {
-              await NotificationService().cancelAllNotifications();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Alle Notifications gestoppt'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              }
-            },
-            icon: const Icon(Icons.cancel),
-            label: const Text('Alle Notifications stoppen'),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        size: 20,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Hinweis',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            ListTile(
+              title: const Text('Tägliche Erinnerung'),
+              subtitle: const Text('Erinnert dich jeden Tag ans Aufräumen'),
+              trailing: Switch(
+                value: settings.notificationsEnabled,
+                onChanged: _toggleNotifications,
+              ),
+            ),
+            AnimatedCrossFade(
+              duration: const Duration(milliseconds: 300),
+              crossFadeState: settings.notificationsEnabled
+                  ? CrossFadeState.showFirst
+                  : CrossFadeState.showSecond,
+              firstChild: ListTile(
+                title: const Text('Erinnerungszeit'),
+                subtitle: Text(
+                  '${settings.notificationHour}:${settings.notificationMinute.toString().padLeft(2, '0')} Uhr',
+                ),
+                trailing: const Icon(Icons.access_time),
+                onTap: _selectNotificationTime,
+              ),
+              secondChild: const SizedBox.shrink(),
+            ),
+            const Divider(),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () async {
+                await NotificationService().showTestNotification();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Test-Benachrichtigung gesendet'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.notifications_outlined),
+              label: const Text('Test: Benachrichtigung senden'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: () async {
+                await NotificationService().testNotificationIn10SecondsWithCatch();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Benachrichtungstest (10 Sek.) geplant!'),
+                      duration: Duration(seconds: 10),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.timer_10),
+              label: const Text('Test: Benachrichtigung in 10 Sek.'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: () async {
+                final pendingNotifications = await NotificationService().getPendingNotifications();
+                if (mounted) {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Geplante Benachrichtigungen'),
+                      content: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (pendingNotifications.isEmpty)
+                              const Text('Keine Benachrichtigungen geplant')
+                            else
+                              ...pendingNotifications.map((notification) => Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('ID: ${notification.id}',
+                                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        Text('Titel: ${notification.title ?? "Kein Titel"}'),
+                                        Text('Text: ${notification.body ?? "Kein Text"}'),
+                                        Text('Payload: ${notification.payload ?? "Kein Payload"}'),
+                                        const Divider(),
+                                      ],
+                                    ),
+                                  )),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Anzahl geplant: ${pendingNotifications.length}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            if (settings.notificationsEnabled)
+                              Text(
+                                'Soll-Zeit: ${settings.notificationHour}:${settings.notificationMinute.toString().padLeft(2, '0')} Uhr',
+                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Diese App befindet sich noch in der Entwicklung.',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                ],
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.bug_report),
+              label: const Text('Debug: Geplante Benachrichtigungen'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: () async {
+                await NotificationService().cancelAllNotifications();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Alle Notifications gestoppt'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.cancel),
+              label: const Text('Alle Notifications stoppen'),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Hinweis',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Diese App befindet sich noch in der Entwicklung.',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          // NEU: Debug-Button zum Löschen ALLER Hive-Daten und Schließen der App
-          const SizedBox(height: 8),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color.fromARGB(255, 255, 132, 123)),
-            onPressed: _deleteAllHiveDataAndRestart,
-            icon: const Icon(Icons.delete_forever),
-            label: const Text('Debug: ALLE Daten löschen'),
-          ),
-        ],
+            // NEU: Debug-Button zum Löschen ALLER Hive-Daten und Schließen der App
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color.fromARGB(255, 255, 132, 123),
+              ),
+              onPressed: _deleteAllHiveDataAndRestart,
+              icon: const Icon(Icons.delete_forever),
+              label: const Text('Debug: ALLE Daten löschen'),
+            ),
+          ],
+        ),
       ),
     );
   }
