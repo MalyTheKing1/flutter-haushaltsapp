@@ -29,17 +29,38 @@ class _OneTimeTasksScreenState extends State<OneTimeTasksScreen> {
       builder: (context, Box<OneTimeTask> box, _) {
         final tasks = box.values.toList();
 
+        // 👉 NEU: Dynamisches Bottom-Padding berechnen, damit der FAB keine Items verdeckt
+        const double fabHeight = 56.0;     // Standardgröße des FAB
+        const double fabMargin = 16.0;     // Standardabstand vom Rand
+        const double extraSpacing = 12.0;  // etwas Luft darüber
+        final double bottomSafe = MediaQuery.of(context).padding.bottom;
+        final double bottomPadding = fabHeight + fabMargin + extraSpacing + bottomSafe;
+
         return Scaffold(
           appBar: AppBar(title: const Text('To-Do Liste')),
           body: ReorderableListView.builder(
             itemCount: tasks.length,
             onReorder: _onReorder,
-            buildDefaultDragHandles: true,
+            // ⚠️ Eigene Drag-Handles verwenden, damit Long-Press-Delay greift
+            buildDefaultDragHandles: false,
+            // 👉 NEU: Padding unten, damit der FAB die letzten Einträge nicht überlappt
+            padding: EdgeInsets.only(top: 8, bottom: bottomPadding),
             itemBuilder: (context, index) {
-              return OnetimeTaskItem(
-                key: ValueKey(tasks[index].key),
-                task: tasks[index],
-                onDelete: () => _deleteTask(index),
+              final task = tasks[index];
+              return Container(
+                key: ValueKey(task.key), // stabiler Key für Reorder
+                child: OnetimeTaskItem(
+                  // ➕ Kompaktes Drag-Handle: etwas größer, aber schmaler Abstand
+                  leading: ReorderableDelayedDragStartListener(
+                    index: index, // Reorder startet nach ~0,5s Hold auf dem Icon
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 2.0), // schmaler
+                      child: Icon(Icons.drag_handle, size: 22), // größer
+                    ),
+                  ),
+                  task: task,
+                  onDelete: () => _deleteTask(index),
+                ),
               );
             },
           ),
@@ -72,31 +93,23 @@ class _OneTimeTasksScreenState extends State<OneTimeTasksScreen> {
   /// Aufgabe löschen beim Abhaken
   void _deleteTask(int index) {
     final deletedTask = _box.getAt(index);
-
     if (deletedTask == null) return;
 
-    // Aufgabe löschen
     _box.deleteAt(index);
 
-    // Snackbar mit Undo
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Aufgabe "${deletedTask.title}" erledigt'),
         action: SnackBarAction(
           label: 'Rückgängig',
           onPressed: () async {
-            // Neue Aufgabenliste mit Wiederherstellung an alter Position
             final oldTasks = _box.values.toList();
             oldTasks.insert(index, deletedTask);
 
-            // Box leeren
             await _box.clear();
-
-            // Aufgaben wieder einfügen
             for (final task in oldTasks) {
               await _box.add(OneTimeTask(title: task.title));
             }
-            // Kein setState nötig – Hive meldet Änderung jetzt korrekt
           },
         ),
         duration: const Duration(seconds: 4),

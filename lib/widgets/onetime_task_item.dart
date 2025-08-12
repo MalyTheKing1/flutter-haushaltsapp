@@ -1,3 +1,5 @@
+// lib/widgets/onetime_task_item.dart
+// ⛳ Timer-Logik entfernt – Edit öffnet jetzt direkt beim Long-Press (wie im Recurring-Tab)
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -8,10 +10,14 @@ class OnetimeTaskItem extends StatefulWidget {
   final OneTimeTask task;
   final VoidCallback onDelete;
 
+  // 👉 Optionales Leading-Widget (z. B. unser Reorder-Drag-Handle)
+  final Widget? leading;
+
   const OnetimeTaskItem({
     super.key,
     required this.task,
     required this.onDelete,
+    this.leading,
   });
 
   @override
@@ -37,25 +43,19 @@ class _OnetimeTaskItemState extends State<OnetimeTaskItem>
     HapticFeedback.lightImpact();
 
     await Future.delayed(const Duration(milliseconds: 100));
-    setState(() {
-      _scale = 1.0;
-    });
+    setState(() => _scale = 1.0);
 
     await Future.delayed(const Duration(milliseconds: 150));
-    setState(() {
-      _tileColor = Colors.transparent;
-    });
+    setState(() => _tileColor = Colors.transparent);
 
     await Future.delayed(const Duration(milliseconds: 100));
-    setState(() {
-      _opacity = 0.0;
-    });
+    setState(() => _opacity = 0.0);
 
     await Future.delayed(const Duration(milliseconds: 300));
     widget.onDelete();
   }
 
-  void _editTaskTitle(BuildContext context) async {
+  Future<void> _editTaskTitle(BuildContext context) async {
     final TextEditingController controller =
         TextEditingController(text: widget.task.title);
 
@@ -86,7 +86,6 @@ class _OnetimeTaskItemState extends State<OnetimeTaskItem>
         widget.task.title = result.trim();
       });
 
-      // Persistiere Änderung in Hive, falls möglich
       try {
         await widget.task.save();
       } catch (e) {
@@ -106,15 +105,24 @@ class _OnetimeTaskItemState extends State<OnetimeTaskItem>
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           color: _tileColor,
+          // 👉 Kein GestureDetector mehr nötig: Long-Press direkt am ListTile,
+          //    damit der Dialog sofort während des Haltens öffnet (wie im Recurring-Tab).
           child: ListTile(
             key: widget.key,
+            // 👈 Kompaktes Drag-Handle (Reorder via ReorderableDelayedDragStartListener im Screen)
+            minLeadingWidth: 28, // 👈 reduziert den Abstand zwischen Handle und Titel (Default ~40)
+            leading: widget.leading,
             title: Text(widget.task.title),
             trailing: IconButton(
               icon: const Icon(Icons.check_box),
               onPressed: _handleCheck,
               tooltip: 'Aufgabe abhaken und löschen',
             ),
-            onLongPress: () => _editTaskTitle(context),
+            onLongPress: () {
+              // Sofortiges Edit beim Halten – kein Loslassen nötig.
+              HapticFeedback.selectionClick();
+              _editTaskTitle(context);
+            },
           ),
         ),
       ),

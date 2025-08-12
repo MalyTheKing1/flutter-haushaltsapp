@@ -7,12 +7,16 @@ import 'services/hive_service.dart';
 import 'screens/settings_screen.dart';
 import 'screens/recurring_tasks_screen.dart';
 import 'screens/onetime_tasks_screen.dart';
+// 👉 NEU: Notizen-Tab
+import 'screens/notes_screen.dart';
 
 Future<void> deleteAllHiveData() async {
   print("🧨 Lösche alle Hive-Daten (Settings, Tasks)...");
   await Hive.deleteBoxFromDisk(HiveService.recurringBoxName);
   await Hive.deleteBoxFromDisk(HiveService.onetimeBoxName);
   await Hive.deleteBoxFromDisk(HiveService.settingsBoxName);
+  // 👉 NEU: Notizen-Box ebenfalls löschen
+  await Hive.deleteBoxFromDisk(HiveService.notesBoxName);
   print("✅ Alle Hive-Daten wurden gelöscht");
 }
 
@@ -24,7 +28,7 @@ void main() async {
   await HiveService.registerAdapters();
 
   // 👉 Nur für Debug/Entwicklung: Lösche ALLE gespeicherten Daten beim Start
-//  await deleteAllHiveData();
+  // await deleteAllHiveData();
 
   await HiveService.openBoxes();
   await NotificationService().init();
@@ -87,7 +91,8 @@ class _MainPageState extends State<MainPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    // 👉 NEU: 3 Tabs (Haushalt, To-Do, Notizen)
+    _tabController = TabController(length: 3, vsync: this);
 
     // Wenn per Swipe gewechselt wird → BottomNavigationBar aktualisieren
     _tabController.addListener(() {
@@ -129,6 +134,8 @@ class _MainPageState extends State<MainPage>
         children: const [
           RecurringTasksScreen(),
           OneTimeTasksScreen(),
+          // 👉 NEU: Notizen-Screen
+          NotesScreen(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -140,6 +147,11 @@ class _MainPageState extends State<MainPage>
           BottomNavigationBarItem(
             icon: Icon(Icons.check_box),
             label: 'To-Do',
+          ),
+          // 👉 NEU: Dritter Tab
+          BottomNavigationBarItem(
+            icon: Icon(Icons.note_alt_outlined),
+            label: 'Notizen',
           ),
         ],
         currentIndex: _tabController.index,
