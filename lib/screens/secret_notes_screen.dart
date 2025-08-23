@@ -11,7 +11,7 @@ class SecretNotesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: const BackButton(), // ← Pfeil nach links
-        title: const Text('Geheime Notizen'),
+        title: const Text('Safe Space'),
       ),
       body: const NotesScreen(isSecret: true),
     );

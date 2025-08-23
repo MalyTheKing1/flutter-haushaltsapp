@@ -300,7 +300,7 @@ class _NotesScreenState extends State<NotesScreen> {
             ctx: ctx,
             titleCtrl: titleCtrl,
             contentCtrl: contentCtrl,
-            sheetTitle: widget.isSecret ? 'Neue geheime Notiz' : 'Neue Notiz',
+            sheetTitle: widget.isSecret ? 'Neue Notiz' : 'Neue Notiz',
             onCancel: () => Navigator.of(ctx).pop(),
             onSave: () async {
               final title = titleCtrl.text.trim();
