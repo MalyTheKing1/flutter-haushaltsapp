@@ -138,11 +138,27 @@ class _OneTimeTasksScreenState extends State<OneTimeTasksScreen> {
               child: const Text('Abbrechen'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 final title = titleController.text.trim();
                 if (title.isNotEmpty) {
-                  _box.add(OneTimeTask(title: title));
-                  Navigator.of(context).pop();
+                  // ✨ Neu: Statt .add() ans Ende → ganz oben (Index 0) einsortieren.
+                  // Vorgehen analog zu deinem Reorder/Undo:
+                  final List<OneTimeTask> oldTasks = _box.values.toList();
+
+                  // Neues Element an den Anfang setzen
+                  final OneTimeTask newTask = OneTimeTask(title: title);
+                  final List<OneTimeTask> newOrder = [newTask, ...oldTasks];
+
+                  // Box in neuer Reihenfolge persistieren (abwärtskompatibel: nur Feld 'title')
+                  await _box.clear();
+                  for (final t in newOrder) {
+                    await _box.add(OneTimeTask(title: t.title));
+                  }
+
+                  // Dialog schließen
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
                 }
               },
               child: const Text('Hinzufügen'),
