@@ -76,6 +76,12 @@ class HiveService {
         dirty = true;
       }
 
+      // 👉 NEU: isSecret-Default absichern (Abwärtskompatibilität)
+      if (note.isSecret != true && note.isSecret != false) {
+        note.isSecret = false;
+        dirty = true;
+      }
+
       if (dirty) {
         await note.save();
       }

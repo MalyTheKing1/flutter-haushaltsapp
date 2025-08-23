@@ -14,7 +14,13 @@ import '../widgets/note_tile.dart';
 /// - Bearbeiten per Tap/Schaltfläche
 /// - Löschen per Icon
 class NotesScreen extends StatefulWidget {
-  const NotesScreen({super.key});
+  const NotesScreen({
+    super.key,
+    this.isSecret = false, // 👉 NEU: zeigt normale oder geheime Notizen
+  });
+
+  /// Steuert, ob normale (false) oder geheime (true) Notizen angezeigt werden.
+  final bool isSecret;
 
   @override
   State<NotesScreen> createState() => _NotesScreenState();
@@ -189,26 +195,35 @@ class _NotesScreenState extends State<NotesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Safe-Area-Unterkante (z. B. Gestenleiste Android / Home Indicator iOS)
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
     // KEIN eigenes Scaffold (AppBar/BottomNav kommt von MainPage)
     return Stack(
       children: [
         ValueListenableBuilder(
           valueListenable: _notesBox.listenable(),
           builder: (context, Box<Note> box, _) {
-            final notes = box.values.toList();
+            // 👉 NEU: nur Notizen dieses Kanals (secret vs. normal)
+            final notes = box.values.where((n) => n.isSecret == widget.isSecret).toList();
 
             // Sortierung: NUR nach sortIndex (Drag & Drop definiert die Reihenfolge)
             notes.sort((a, b) => a.sortIndex.compareTo(b.sortIndex));
 
             if (notes.isEmpty) {
-              return const Center(
-                child: Text('Keine Notizen vorhanden.\nTippe auf +, um eine zu erstellen.'),
+              return Center(
+                child: Text(
+                  widget.isSecret
+                      ? 'Keine geheimen Notizen vorhanden.\nTippe auf +, um eine zu erstellen.'
+                      : 'Keine Notizen vorhanden.\nTippe auf +, um eine zu erstellen.',
+                  textAlign: TextAlign.center,
+                ),
               );
             }
 
             // ReorderableListView mit stabilen Keys (HiveObject.key)
             return ReorderableListView.builder(
-              padding: const EdgeInsets.only(bottom: 96, top: 8),
+              padding: EdgeInsets.only(bottom: 96 + bottomInset, top: 8),
               itemCount: notes.length,
               onReorder: (oldIndex, newIndex) async {
                 if (newIndex > oldIndex) newIndex -= 1;
@@ -216,7 +231,7 @@ class _NotesScreenState extends State<NotesScreen> {
                 final moved = notes.removeAt(oldIndex);
                 notes.insert(newIndex, moved);
 
-                // Persistiere neue sortIndex-Werte (0..n-1)
+                // Persistiere neue sortIndex-Werte **innerhalb** dieser Teilmenge
                 for (var i = 0; i < notes.length; i++) {
                   if (notes[i].sortIndex != i) {
                     notes[i].sortIndex = i;
@@ -252,7 +267,7 @@ class _NotesScreenState extends State<NotesScreen> {
         // Floating Action Button unten rechts – NUR Plus (kein "Notiz"-Label)
         Positioned(
           right: 16,
-          bottom: 16,
+          bottom: 16 + bottomInset,
           child: FloatingActionButton(
             onPressed: _showAddDialog,
             child: const Icon(Icons.add),
@@ -268,7 +283,7 @@ class _NotesScreenState extends State<NotesScreen> {
     final contentCtrl = TextEditingController();
 
     // =======================
-    // NEU: BottomSheet-Editor
+    // BottomSheet-Editor
     // =======================
     await showModalBottomSheet<void>(
       context: context,
@@ -280,25 +295,28 @@ class _NotesScreenState extends State<NotesScreen> {
       ),
       builder: (ctx) {
         return _buildScaffoldedSheet(
-          context: ctx,
+          context: ctx, // ✅ wichtig: ctx, nicht context
           child: _buildNoteEditorSheet(
             ctx: ctx,
             titleCtrl: titleCtrl,
             contentCtrl: contentCtrl,
-            sheetTitle: 'Neue Notiz',
+            sheetTitle: widget.isSecret ? 'Neue geheime Notiz' : 'Neue Notiz',
             onCancel: () => Navigator.of(ctx).pop(),
             onSave: () async {
               final title = titleCtrl.text.trim();
               final content = contentCtrl.text.trim();
 
               if (title.isNotEmpty || content.isNotEmpty) {
-                // sortIndex = nächster Index (am Ende einfügen)
-                final nextIndex = _notesBox.length;
+                // sortIndex = nächster Index **innerhalb** dieses Kanals
+                final existing =
+                    _notesBox.values.where((n) => n.isSecret == widget.isSecret).length;
+                final nextIndex = existing;
                 await _notesBox.add(
                   Note(
                     title: title,
                     content: content,
                     sortIndex: nextIndex,
+                    isSecret: widget.isSecret, // 👉 WICHTIG
                   ),
                 );
               }
@@ -315,7 +333,7 @@ class _NotesScreenState extends State<NotesScreen> {
     final contentCtrl = TextEditingController(text: note.content);
 
     // =======================
-    // NEU: BottomSheet-Editor
+    // BottomSheet-Editor
     // =======================
     await showModalBottomSheet<void>(
       context: context,
@@ -327,7 +345,7 @@ class _NotesScreenState extends State<NotesScreen> {
       ),
       builder: (ctx) {
         return _buildScaffoldedSheet(
-          context: ctx,
+          context: ctx, // ✅ wichtig: ctx
           child: _buildNoteEditorSheet(
             ctx: ctx,
             titleCtrl: titleCtrl,
@@ -354,7 +372,10 @@ class _NotesScreenState extends State<NotesScreen> {
   // Sorgt dafür, dass der Sheet-Inhalt den verfügbaren Platz
   // gut nutzt (v. a. auf kleineren Geräten/mit Tastatur).
   // ---------------------------------------------
-  Widget _buildScaffoldedSheet({required BuildContext context, required Widget child}) {
+  Widget _buildScaffoldedSheet({
+    required BuildContext context,
+    required Widget child,
+  }) {
     // Höhe begrenzen, damit der Sheet nicht "unendlich" groß wird,
     // sondern maximal bis zur Bildschirmhöhe geht.
     return LayoutBuilder(

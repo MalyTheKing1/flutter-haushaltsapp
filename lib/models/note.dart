@@ -11,6 +11,9 @@ class Note extends HiveObject {
   bool pinned;
   int sortIndex;        // Benutzerdefinierte Reihenfolge (Drag & Drop)
 
+  // 👉 NEU: geheime Notiz (Standard false, damit Alt-Daten kompatibel bleiben)
+  bool isSecret;
+
   Note({
     required this.title,
     required this.content,
@@ -18,6 +21,7 @@ class Note extends HiveObject {
     DateTime? updatedAt,
     this.pinned = false,
     this.sortIndex = 0,
+    this.isSecret = false, // default
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -29,11 +33,12 @@ class Note extends HiveObject {
   }
 
   @override
-  String toString() => 'Note(title: $title, pinned: $pinned, sortIndex: $sortIndex)';
+  String toString() =>
+      'Note(title: $title, pinned: $pinned, sortIndex: $sortIndex, isSecret: $isSecret)';
 }
 
 /// Adapter: typeId = 2 (muss mit HiveService.registerAdapters() übereinstimmen)
-/// Abwärtskompatibel zum alten Format (nur "text").
+/// Abwärtskompatibel zum alten Format (nur "text") + neuem Feld isSecret.
 class NoteAdapter extends TypeAdapter<Note> {
   @override
   final int typeId = 2;
@@ -46,7 +51,8 @@ class NoteAdapter extends TypeAdapter<Note> {
     };
 
     // Altformat erkennen: (0..3) vorhanden, aber 4/5 (title/content) fehlen
-    final isOldFormat = fields.containsKey(0) && !fields.containsKey(4) && !fields.containsKey(5);
+    final isOldFormat =
+        fields.containsKey(0) && !fields.containsKey(4) && !fields.containsKey(5);
 
     if (isOldFormat) {
       final String oldText = fields[0] as String? ?? '';
@@ -57,10 +63,11 @@ class NoteAdapter extends TypeAdapter<Note> {
         updatedAt: fields[2] as DateTime? ?? DateTime.now(),
         pinned: fields[3] as bool? ?? false,
         sortIndex: 0,
+        isSecret: false, // 👈 Alt-Daten sind nie geheim
       );
     }
 
-    // Neues Format
+    // Neues Format (mit title/content/sortIndex) + optional isSecret (Feld 7)
     return Note(
       title: fields[4] as String? ?? '',
       content: fields[5] as String? ?? '',
@@ -68,13 +75,14 @@ class NoteAdapter extends TypeAdapter<Note> {
       updatedAt: fields[2] as DateTime? ?? DateTime.now(),
       pinned: fields[3] as bool? ?? false,
       sortIndex: fields[6] as int? ?? 0,
+      isSecret: fields[7] as bool? ?? false, // 👈 falls nicht vorhanden → false
     );
   }
 
   @override
   void write(BinaryWriter writer, Note obj) {
     writer
-      ..writeByte(7) // Anzahl Felder im neuen Format
+      ..writeByte(8) // Anzahl Felder im *aktuellen* Format (7 + neues Feld 7)
       ..writeByte(0) // (Altformat-Kompatibilität – schreiben content hierhin)
       ..write(obj.content)
       ..writeByte(1)
@@ -88,6 +96,8 @@ class NoteAdapter extends TypeAdapter<Note> {
       ..writeByte(5) // content
       ..write(obj.content)
       ..writeByte(6) // sortIndex
-      ..write(obj.sortIndex);
+      ..write(obj.sortIndex)
+      ..writeByte(7) // 👉 NEU: isSecret
+      ..write(obj.isSecret);
   }
 }
