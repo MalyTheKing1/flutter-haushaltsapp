@@ -51,6 +51,9 @@ class HiveService {
     await _migrateNotesIfNeeded(notesBox);
 
     await _openSettingsBoxWithMigration();
+
+    // 👉 Kleiner Sicherheitsschritt: Altdaten der Recurring-Tasks gegen Defaults absichern
+    await _migrateRecurringTasksIfNeeded(recurringBox);
   }
 
   /// MIGRATION: Alte Notizen (nur "text") → neues Schema (title/content/sortIndex)
@@ -102,9 +105,47 @@ class HiveService {
         notificationsEnabled: false,
         notificationHour: 18,
         notificationMinute: 0,
+        // NEU: Debug + letzter Random-Check werden im Konstruktor sinnvoll vorbelegt
       );
       await settingsBox.add(settings);
       print("✅ Neue Settings-Box mit Defaults erstellt");
+    } else {
+      // Abwärtskompatibel: fehlende neue Felder sanft setzen
+      final s = settingsBox.values.first;
+      bool dirty = false;
+      if (s.debugAlwaysTriggerRandom == null) {
+        s.debugAlwaysTriggerRandom = false;
+        dirty = true;
+      }
+      // lastRandomCheckDate darf null bleiben (bedeutet: noch nie geprüft)
+      if (dirty) await s.save();
+    }
+  }
+
+  /// MIGRATION: Absicherung der neuen Randomness-Felder bei Recurring-Tasks
+  static Future<void> _migrateRecurringTasksIfNeeded(Box<RecurringTask> box) async {
+    for (var i = 0; i < box.length; i++) {
+      final t = box.getAt(i);
+      if (t == null) continue;
+
+      bool dirty = false;
+      // Falls alte Datensätze ohne Felder
+      if (t.randomnessEnabled != true && t.randomnessEnabled != false) {
+        t.randomnessEnabled = false;
+        dirty = true;
+      }
+      if (t.randomChance == 0 && t.randomnessEnabled == false) {
+        // 0 ist Default, passt – keine Aktion nötig
+      } else if (t.randomChance < 0 || t.randomChance > 100) {
+        t.randomChance = 0;
+        dirty = true;
+      }
+      if (t.randomDueToday != true && t.randomDueToday != false) {
+        t.randomDueToday = false;
+        dirty = true;
+      }
+
+      if (dirty) await t.save();
     }
   }
 

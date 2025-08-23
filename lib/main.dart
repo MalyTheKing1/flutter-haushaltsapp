@@ -1,9 +1,11 @@
 // lib/main.dart
 import 'dart:async'; // für Timer
+import 'dart:math';  // für Random
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'models/settings.dart';
+import 'models/recurring_task.dart';
 import 'services/notification_service.dart';
 import 'services/hive_service.dart';
 import 'screens/settings_screen.dart';
@@ -38,7 +40,56 @@ void main() async {
   await NotificationService().init();
   await NotificationService().requestNotificationPermission();
 
+  // NEU: Täglicher Randomness-Check beim App-Start
+  await _runDailyRandomnessCheck();
+
   runApp(const MyApp());
+}
+
+/// Führt einmal pro Kalendertag den Randomness-Wurf für alle Random-Tasks aus.
+/// Respektiert Settings.debugAlwaysTriggerRandom.
+Future<void> _runDailyRandomnessCheck() async {
+  final settingsBox = Hive.box<Settings>(HiveService.settingsBoxName);
+  final settings = settingsBox.values.first;
+
+  DateTime today(DateTime d) => DateTime(d.year, d.month, d.day);
+  final now = DateTime.now();
+  final todayDate = today(now);
+
+  final alreadyCheckedToday =
+      settings.lastRandomCheckDate != null && today(settings.lastRandomCheckDate!) == todayDate;
+
+  if (alreadyCheckedToday) {
+    print('ℹ️ Randomness bereits heute geprüft – überspringe.');
+    return;
+  }
+
+  final recurringBox = Hive.box<RecurringTask>(HiveService.recurringBoxName);
+  final rnd = Random();
+
+  for (final task in recurringBox.values) {
+    if (!task.randomnessEnabled) continue;
+
+    bool due = false;
+    if ((settings.debugAlwaysTriggerRandom ?? false) == true) {
+      due = true;
+    } else {
+      final roll = rnd.nextInt(100) + 1; // 1..100
+      due = roll <= (task.randomChance.clamp(1, 100));
+    }
+
+    // Ergebnis setzen
+    task.randomDueToday = due;
+    if (due) {
+      task.isDone = false; // sicherstellen, dass es als offen erscheint
+    }
+    await task.save();
+  }
+
+  settings.lastRandomCheckDate = todayDate;
+  await settings.save();
+
+  print('✅ Randomness-Check für ${todayDate.toIso8601String()} abgeschlossen.');
 }
 
 /// Haupt-App Widget

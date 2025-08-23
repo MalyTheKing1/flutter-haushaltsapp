@@ -23,26 +23,54 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
     super.dispose();
   }
 
-  List<RecurringTask> _getSortedTasks(List<RecurringTask> tasks) {
-    for (var task in tasks) {
-      if (task.isDone && task.isDue) {
-        task.isDone = false;
-        task.save();
+List<RecurringTask> _getSortedTasks(List<RecurringTask> tasks) {
+  final now = DateTime.now();
+
+  final randomOpen = <RecurringTask>[];       // NEU: alle Randoms, die offen sind
+  final normalDueOpen = <RecurringTask>[];
+  final normalNotDueOpen = <RecurringTask>[];
+  final normalDone = <RecurringTask>[];
+  final randomDone = <RecurringTask>[];       // NEU: alle Randoms, die erledigt sind
+
+  for (final t in tasks) {
+    if (t.randomnessEnabled) {
+      if (t.isDone) {
+        randomDone.add(t);           // ganz unten
+      } else {
+        randomOpen.add(t);           // ganz oben
+      }
+    } else {
+      if (t.isDone) {
+        normalDone.add(t);
+      } else {
+        if (t.isDue) {
+          normalDueOpen.add(t);
+        } else {
+          normalNotDueOpen.add(t);
+        }
       }
     }
-
-    final openTasks = tasks.where((t) => !t.isDone).toList();
-    final doneTasks = tasks.where((t) => t.isDone).toList();
-
-    openTasks.sort((a, b) => a.intervalDays.compareTo(b.intervalDays));
-    doneTasks.sort((a, b) {
-      final aDueDate = a.lastDoneDate.add(Duration(days: a.intervalDays));
-      final bDueDate = b.lastDoneDate.add(Duration(days: b.intervalDays));
-      return aDueDate.compareTo(bDueDate);
-    });
-
-    return [...openTasks, ...doneTasks];
   }
+
+  // Sortierungen innerhalb der Buckets
+  normalDueOpen.sort((a, b) => a.intervalDays.compareTo(b.intervalDays));
+  int daysUntil(RecurringTask t) => t.daysUntilDueFrom(now);
+  normalNotDueOpen.sort((a, b) => daysUntil(a).compareTo(daysUntil(b)));
+  normalDone.sort((a, b) {
+    final aDueDate = a.lastDoneDate.add(Duration(days: a.intervalDays));
+    final bDueDate = b.lastDoneDate.add(Duration(days: b.intervalDays));
+    return aDueDate.compareTo(bDueDate);
+  });
+  // Random-Buckets bleiben unsortiert (oder du sortierst optional nach Chance/Titel)
+
+  return [
+    ...randomOpen,       // GANZ oben
+    ...normalDueOpen,
+    ...normalNotDueOpen,
+    ...normalDone,
+    ...randomDone,       // GANZ unten
+  ];
+}
 
   void _onTaskCheckChanged(RecurringTask task) {
     setState(() {
@@ -105,6 +133,9 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
   void _showAddDialog(BuildContext context) {
     final titleController = TextEditingController();
     final intervalController = TextEditingController();
+    final randomChanceController = TextEditingController(text: '0'); // 0% default (aus)
+    bool randomnessEnabled = false;
+
     final iconOptions = [
       'house.png',
       'broom.png',
@@ -128,6 +159,7 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
       'paper.png',
       'cleaning.png',
       'cuttlery.png',
+      'question.png',
     ];
     String selectedIcon = 'house.png';
 
@@ -150,6 +182,7 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
                       controller: intervalController,
                       decoration: const InputDecoration(labelText: 'Intervall (Tage)'),
                       keyboardType: TextInputType.number,
+                      enabled: !randomnessEnabled, // bei Zufälligkeit egal
                     ),
                     const SizedBox(height: 12),
                     Text('Icon auswählen:', style: Theme.of(context).textTheme.labelMedium),
@@ -181,6 +214,23 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
                         );
                       }).toList(),
                     ),
+                    // ↓↓↓ NEU: Zufälligkeit-UI ans Ende verschoben ↓↓↓
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      title: const Text('Zufälligkeit'),
+                      value: randomnessEnabled,
+                      onChanged: (v) {
+                        setState(() {
+                          randomnessEnabled = v;
+                        });
+                      },
+                    ),
+                    TextField(
+                      controller: randomChanceController,
+                      decoration: const InputDecoration(labelText: 'Chance (1–100 %)'),
+                      keyboardType: TextInputType.number,
+                      enabled: randomnessEnabled,
+                    ),
                   ],
                 ),
               ),
@@ -195,7 +245,26 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
                   onPressed: () {
                     final title = titleController.text.trim();
                     final interval = int.tryParse(intervalController.text.trim());
-                    if (title.isNotEmpty && interval != null && interval > 0) {
+                    final chance = int.tryParse(randomChanceController.text.trim()) ?? 0;
+
+                    if (title.isEmpty) return;
+
+                    if (randomnessEnabled) {
+                      // Für Randomness: Chance validieren
+                      final safeChance = chance.clamp(1, 100);
+                      final box = Hive.box<RecurringTask>(HiveService.recurringBoxName);
+                      box.add(RecurringTask(
+                        title: title,
+                        intervalDays: 1, // irrelevant – aber gültig halten
+                        iconName: selectedIcon,
+                        randomnessEnabled: true,
+                        randomChance: safeChance,
+                        randomDueToday: false,
+                      ));
+                      Navigator.of(context).pop();
+                    } else {
+                      // Klassischer Fall
+                      if (interval == null || interval <= 0) return;
                       final box = Hive.box<RecurringTask>(HiveService.recurringBoxName);
                       box.add(RecurringTask(
                         title: title,

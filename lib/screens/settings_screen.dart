@@ -22,6 +22,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     settingsBox = Hive.box<Settings>(HiveService.settingsBoxName);
     settings = settingsBox.values.first;
+    // Sanfte Defaults für neue Felder
+    settings.debugAlwaysTriggerRandom ??= false;
+    settings.save();
   }
 
   void _toggleDarkMode(bool value) {
@@ -153,6 +156,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await Future.delayed(const Duration(milliseconds: 700));
       SystemNavigator.pop(); // <-- App schließen (Android/iOS)
     }
+  }
+
+  // NEU: Debug – Tagesöffnung zurücksetzen
+  void _resetTodayOpenFlag() async {
+    setState(() {
+      settings.lastRandomCheckDate = null; // null = noch nie gecheckt
+      settings.save();
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Heutige App-Öffnung zurückgesetzt')),
+    );
   }
 
   @override
@@ -321,6 +336,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: const Icon(Icons.cancel),
               label: const Text('Alle Notifications stoppen'),
             ),
+
+            // ---------------------------------------
+            // NEU: Debug – Randomness
+            // ---------------------------------------
+            const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text('Debug: Zufällige Tasks immer auslösen'),
+              value: settings.debugAlwaysTriggerRandom ?? false,
+              onChanged: (v) {
+                setState(() {
+                  settings.debugAlwaysTriggerRandom = v;
+                  settings.save();
+                });
+              },
+            ),
+            ElevatedButton.icon(
+              onPressed: _resetTodayOpenFlag,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Heutige App-Öffnung zurücksetzen'),
+            ),
+
             const SizedBox(height: 16),
             Card(
               child: Padding(

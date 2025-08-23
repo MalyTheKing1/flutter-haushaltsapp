@@ -22,13 +22,16 @@ class RecurringTaskAdapter extends TypeAdapter<RecurringTask> {
       isDone: fields[2] as bool,
       lastDoneDate: fields[3] as DateTime?,
       iconName: fields[4] as String?,
+      randomnessEnabled: fields[5] as bool?,
+      randomChance: fields[6] as int?,
+      randomDueToday: fields[7] as bool?,
     );
   }
 
   @override
   void write(BinaryWriter writer, RecurringTask obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
@@ -38,7 +41,13 @@ class RecurringTaskAdapter extends TypeAdapter<RecurringTask> {
       ..writeByte(3)
       ..write(obj.lastDoneDate)
       ..writeByte(4)
-      ..write(obj.iconName);
+      ..write(obj.iconName)
+      ..writeByte(5)
+      ..write(obj.randomnessEnabled)
+      ..writeByte(6)
+      ..write(obj.randomChance)
+      ..writeByte(7)
+      ..write(obj.randomDueToday);
   }
 
   @override

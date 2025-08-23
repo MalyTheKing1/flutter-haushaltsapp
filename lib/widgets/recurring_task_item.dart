@@ -26,11 +26,19 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
     super.initState();
 
     if (widget.task.isDone) {
-      final dueDate =
-          widget.task.lastDoneDate.add(Duration(days: widget.task.intervalDays));
-      if (DateTime.now().isAfter(dueDate)) {
-        widget.task.isDone = false;
-        widget.task.save();
+      if (!widget.task.randomnessEnabled) {
+        final dueDate =
+            widget.task.lastDoneDate.add(Duration(days: widget.task.intervalDays));
+        if (DateTime.now().isAfter(dueDate)) {
+          widget.task.isDone = false;
+          widget.task.save();
+        }
+      } else {
+        // Random: wenn erledigt, entfernen wir die heutige Fälligkeit (falls gesetzt)
+        if (widget.task.randomDueToday) {
+          widget.task.randomDueToday = false;
+          widget.task.save();
+        }
       }
     }
 
@@ -57,12 +65,7 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
   }
 
   int getDaysUntilDue() {
-    final nextDueDate =
-        widget.task.lastDoneDate.add(Duration(days: widget.task.intervalDays));
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final dueDate = DateTime(nextDueDate.year, nextDueDate.month, nextDueDate.day);
-    return dueDate.difference(today).inDays;
+    return widget.task.daysUntilDueFrom(DateTime.now());
   }
 
   void _onCheckboxChanged(bool? value) {
@@ -74,6 +77,10 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
       widget.task.isDone = value ?? false;
       if (widget.task.isDone) {
         widget.task.lastDoneDate = DateTime.now();
+        // Random: Häkchen entfernt die heutige Fälligkeit
+        if (widget.task.randomnessEnabled) {
+          widget.task.randomDueToday = false;
+        }
       }
       widget.task.save();
     });
@@ -89,7 +96,11 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
     String subtitleText = '';
     Widget? extraSubtitle;
 
-    if (!task.isDone) {
+    if (task.randomnessEnabled) {
+      // NEU: bei Randomness immer Chance zeigen – unabhängig von isDone
+      subtitleText = 'Chance: ${task.randomChance}%';
+      extraSubtitle = null;
+    } else if (!task.isDone) {
       subtitleText = 'Intervall: ${task.intervalDays} Tage';
     } else {
       final daysUntilDue = getDaysUntilDue();
@@ -112,13 +123,20 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
       }
     }
 
+    final titleStyle = task.randomnessEnabled
+        ? const TextStyle(
+            color: Colors.red,
+            fontWeight: FontWeight.bold,
+          )
+        : null;
+
     return ListTile(
       leading: Image.asset(
         iconPath,
         width: 32,
         height: 32,
       ),
-      title: Text(task.title),
+      title: Text(task.title, style: titleStyle),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -151,6 +169,10 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
   void _showEditDialog(BuildContext context, RecurringTask task) {
     final titleController = TextEditingController(text: task.title);
     final intervalController = TextEditingController(text: task.intervalDays.toString());
+    final randomChanceController =
+        TextEditingController(text: (task.randomChance).toString());
+    bool randomnessEnabled = task.randomnessEnabled;
+
     final iconOptions = [
       'house.png',
       'broom.png',
@@ -174,6 +196,7 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
       'paper.png',
       'cleaning.png',
       'cuttlery.png',
+      'question.png',
     ];
 
     String selectedIcon = task.iconName;
@@ -197,6 +220,7 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
                       controller: intervalController,
                       decoration: const InputDecoration(labelText: 'Intervall (Tage)'),
                       keyboardType: TextInputType.number,
+                      enabled: !randomnessEnabled,
                     ),
                     const SizedBox(height: 12),
                     Text('Icon auswählen:', style: Theme.of(context).textTheme.labelMedium),
@@ -228,6 +252,23 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
                         );
                       }).toList(),
                     ),
+                    // ↓↓↓ NEU: Zufälligkeit-UI ans Ende verschoben ↓↓↓
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      title: const Text('Zufälligkeit'),
+                      value: randomnessEnabled,
+                      onChanged: (v) {
+                        setState(() {
+                          randomnessEnabled = v;
+                        });
+                      },
+                    ),
+                    TextField(
+                      controller: randomChanceController,
+                      decoration: const InputDecoration(labelText: 'Chance (1–100 %)'),
+                      keyboardType: TextInputType.number,
+                      enabled: randomnessEnabled,
+                    ),
                   ],
                 ),
               ),
@@ -242,13 +283,28 @@ class _RecurringTaskItemState extends State<RecurringTaskItem>
                   onPressed: () {
                     final newTitle = titleController.text.trim();
                     final newInterval = int.tryParse(intervalController.text.trim());
-                    if (newTitle.isNotEmpty && newInterval != null && newInterval > 0) {
-                      task.title = newTitle;
+                    final newChance = int.tryParse(randomChanceController.text.trim()) ?? 0;
+
+                    if (newTitle.isEmpty) return;
+
+                    task.title = newTitle;
+                    task.iconName = selectedIcon;
+
+                    if (randomnessEnabled) {
+                      task.randomnessEnabled = true;
+                      task.randomChance = newChance.clamp(1, 100);
+                      task.intervalDays = task.intervalDays <= 0 ? 1 : task.intervalDays; // gültig lassen
+                    } else {
+                      // Randomness aus → normaler Intervall nötig
+                      if (newInterval == null || newInterval <= 0) return;
+                      task.randomnessEnabled = false;
+                      task.randomChance = 0;
+                      task.randomDueToday = false;
                       task.intervalDays = newInterval;
-                      task.iconName = selectedIcon;
-                      task.save();
-                      Navigator.of(context).pop();
                     }
+
+                    task.save();
+                    Navigator.of(context).pop();
                   },
                   child: const Text('Speichern'),
                 ),

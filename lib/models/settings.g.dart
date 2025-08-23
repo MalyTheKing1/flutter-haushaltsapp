@@ -21,13 +21,15 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       notificationsEnabled: fields[1] as bool?,
       notificationHour: fields[2] as int?,
       notificationMinute: fields[3] as int?,
+      debugAlwaysTriggerRandom: fields[4] as bool?,
+      lastRandomCheckDate: fields[5] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Settings obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.isDarkMode)
       ..writeByte(1)
@@ -35,7 +37,11 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       ..writeByte(2)
       ..write(obj.notificationHour)
       ..writeByte(3)
-      ..write(obj.notificationMinute);
+      ..write(obj.notificationMinute)
+      ..writeByte(4)
+      ..write(obj.debugAlwaysTriggerRandom)
+      ..writeByte(5)
+      ..write(obj.lastRandomCheckDate);
   }
 
   @override
